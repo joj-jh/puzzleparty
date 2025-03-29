@@ -16,7 +16,7 @@ const time = document.getElementById('time');
                     
 //initialize the scramble provider worker
 var cstimerWorker = (function() {
-	var worker = new Worker('node_modules/cstimer_module/cstimer_module.js');
+	var worker = new Worker('cstimer_module.js');
 
 	var callbacks = {};
 	var msgid = 0;
