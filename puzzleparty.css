@@ -1,0 +1,8 @@
+.bi {
+    width:1em;
+    height:1em;
+}
+
+#resultsHead :first-child {
+    width: 4rem;
+}
