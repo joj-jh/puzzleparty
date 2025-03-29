@@ -1,4 +1,4 @@
-Open the webpage ![here](https://joj-jh.github.io/puzzleparty).
+Open the webpage at https://joj-jh.github.io/puzzleparty.
 
 Todo:
 - Switch out to nostr version of trystero (torrent version is failing for me)
