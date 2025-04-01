@@ -18,3 +18,8 @@ Todo:
 - Password protected rooms
 - Url route parameters for link sharing
 - Custom indicator sounds on new scramble
+- Mobile support
+- Timing options
+  - Inspection
+  - Spacebar/input/touchscreen tap
+
