@@ -17,6 +17,11 @@ const ao12 = document.getElementById('ao12');
 const plusTwo = document.getElementById('plusTwo');
 const dnf = document.getElementById('dnf');
 const time = document.getElementById('time');
+const inspectionOverlay = document.getElementById('inspectionOverlay');
+const manualEntry = document.getElementById('manualEntry');
+const inspection = document.getElementById('inspection');
+const inspectionCount = document.getElementById('inspectionCount');
+const pageContainer = document.getElementById('pageContainer');
                     
 //initialize the scramble provider worker
 var cstimerWorker = (function() {
@@ -86,7 +91,7 @@ window.onload = function() {
         li.setAttribute('data-value', e[1]);
         li.addEventListener('click', () => {
             if(messages.get('event') != e[1]) {
-                setEvent({date: Date.UTC(), eventId: e[1], eventName: e[0]});
+                setEvent({date: Date.now(), eventId: e[1], eventName: e[0]});
             }
         });
         eventsList.appendChild(li);
@@ -98,6 +103,15 @@ window.onload = function() {
         };
     };
 };
+
+// Utility generator
+function* takeWhile(fn, xs) {
+    for (let x of xs)
+        if (fn(x))
+            yield x;
+        else
+            break;
+}
 
 var room;
 const config = {appId: 'puzzle_party_cube_race_server_nulgaria'};
@@ -132,7 +146,7 @@ class Time {
         
         const centiseconds = Math.floor(this.millis/10);
         const seconds = Math.floor(centiseconds/100);
-        var output = `${seconds%60}.${centiseconds%100}`;
+        var output = `${seconds%60}.${(centiseconds%100).toString().padStart(2,'0')}`;
         const minutes = Math.floor(seconds/60);
         if(minutes > 0) {
             output = (minutes%60).toString() + ':' + output;
@@ -153,7 +167,7 @@ class Solve {
         this.time = new Time((millis ?? 0) + (plusTwo ? 2000 : 0)); 
         this.plusTwo = plusTwo;
         this.dnf = dnf || millis == 0 || millis == null;
-        this.date = Date.UTC();
+        this.date = Date.now();
     }
 
     format() {
@@ -172,7 +186,17 @@ var isHost;
 var members;
 
 connectButton.addEventListener('click', () => {
+    if(room == null) {
+        setupRoom();
+    }
+    else {
+        leaveRoom();
+    }
+});
+
+function setupRoom() {
     console.log("making room");
+    
     const room_id = document.getElementById('room').value;
     const user_id = document.getElementById('username').value ?? 'anonymous';
 
@@ -190,7 +214,7 @@ connectButton.addEventListener('click', () => {
         room: room,
         actionName: 'name',
     })
-    setName({date: Date.UTC(), name: user_id, id: room.selfId});
+    setName({date: Date.now(), name: user_id, id: room.selfId});
 
     setScramble = makeAction({
         room: room, 
@@ -247,10 +271,16 @@ connectButton.addEventListener('click', () => {
     room.onPeerLeave(peerId => { 
         updateMembers();
     });
-});
+    
+    pageContainer.setAttribute("data-connected",'');
+}
 
-time.addEventListener('keyup', ({key}) => {
-    var content = "000000" + time.value;
+function leaveRoom() {
+    pageContainer.removeAttribute("data-connected");
+}
+
+time.addEventListener('keyup', (event) => {
+    var content = "000000" + time.value.replace(/\s/g, "");;
     if(isNaN(content)) {
         time.classList.add("is-invalid");
     }
@@ -258,9 +288,8 @@ time.addEventListener('keyup', ({key}) => {
         time.classList.remove("is-invalid");
     }
 
-    if(key == "Enter") {
+    if(event.key == "Enter") {
         try {
-            
             var ms = parseInt(content.substring(content.length-2)) * 10;
             ms += parseInt(content.substring(content.length-4,content.length-2))*1000;
             ms += parseInt(content.substring(0,content.length-4))*60000;
@@ -295,7 +324,7 @@ function makeAction({
     
     const [send, onGet] = room.makeAction(actionName);
     onGet((data, peerId) => {
-        if(data.date < Date.UTC() + 100) { // Don't accept messages from time travellers ()
+        if(data.date < Date.now() + 100) { // Don't accept messages from time travellers ()
             messages.get(actionName).push(data).sort((a, b) => a.date - b.date)
             onAfterReceivedHandler(data, peerId);
         }
@@ -319,6 +348,7 @@ function updateScramble() {
     const eventType = messages.get('event').last()?.eventId;
     if(scram != null && eventType != null) {
         scramble.textContent = scram;
+        pageContainer.setAttribute("data-has-scramble", "");
         cstimerWorker
             .getImage(scram, eventType)
             .then(svgImage => {
@@ -338,13 +368,14 @@ function genScramble() {
     cstimerWorker
         .getScramble(messages.get('event').last().eventId)
         .then(scram => {
-            setScramble({date: Date.UTC(), scramble: scram});
+            setScramble({date: Date.now(), scramble: scram});
         });
 }
 
 function updateEvent() {
     selectedEventButton.textContent = messages.get('event').last().eventName;
-    if(eventChanged()) { // Just makin sure
+    if(eventHasChanged()) { // Just makin sure
+        pageContainer.removeAttribute("data-has-scramble");
         messages.get('solve').length = 0; // Clear all solves + scrambles if event changed
         messages.get('scramble').length = 0; 
         if(isHost) {
@@ -353,11 +384,11 @@ function updateEvent() {
     }
 }
 
-function eventChanged() {
+function eventHasChanged() {
     var pastEvents = messages.get('event');
     var len = pastEvents.length;
     // If the event is being set for the first time, or is different from the previous value, update stuff
-    return (len == 1 || (len == 2 && pastEvents[len-1].eventId != pastEvents[len-2].eventId));
+    return (len == 1 || (len > 1 && pastEvents[len-1].eventId != pastEvents[len-2].eventId));
 }
 
 function allMembersReady() {
@@ -382,6 +413,7 @@ function updateMembers() {
 }
 
 // Rendering stuff:
+//--------------------------------------------------------
 // This is super inefficient, but should still work:
 function renderResults() {
 
@@ -449,17 +481,17 @@ function renderResults() {
 
         var ao5s = getTruncatedMeans(s, 5);
         ao5.appendChild(
-            makeTh(`${ao5s.last.format()} | ${ao5s.best.format()}`)
+            makeTh(`${ao5s.last.format('DNF')} | ${ao5s.best.format('DNF')}`)
         );
 
         var ao12s = getTruncatedMeans(s, 12);
         ao12.appendChild(
-            makeTh(`${ao12s.last.format()} | ${ao12s.best.format()}`)
+            makeTh(`${ao12s.last.format('DNF')} | ${ao12s.best.format('DNF')}`)
         );
     });
-    single.appendChild(document.createElement('td'));
-    ao5.appendChild(document.createElement('td'));
-    ao12.appendChild(document.createElement('td'));
+    single.appendChild(document.createElement('th'));
+    ao5.appendChild(document.createElement('th'));
+    ao12.appendChild(document.createElement('th'));
 }
 
 // This is the bad O(n^2) way and it makes my teeth hurt
@@ -491,4 +523,71 @@ function getTruncatedMeans(solves, meanSize) {
         }
     }
     return means;
-} 
+}
+
+// Inspection overlay:
+//--------------------------------------------------------
+function canInspect() {
+    if(room != null) {
+        const lastScramble = messages.get('scramble').last();
+        return inspection.checked && 
+            inspectionInterval == null &&
+            messages.get('scramble').length > 0 &&
+            !takeWhile(s => s.date > lastScramble.date , messages.get('solve'))
+                .some(s => s.solverId == room.selfId);
+    }
+    else {
+        return false
+    }
+}
+
+var inspectionInterval = null;
+function renderInspection() {
+    if(canInspect()) {
+        inspectionOverlay.classList.remove('text-success');
+        inspectionOverlay.classList.remove('text-warning');
+        inspectionOverlay.classList.remove('text-danger');
+        inspectionCount.textContent = "0";
+        inspectionOverlay.style.visibility = "visible";
+        var seconds = 0;
+        inspectionInterval = setInterval(() => {
+            seconds++;
+            if(seconds < 15) {
+                inspectionCount.textContent = seconds;
+                if(seconds >= 12) {
+                    inspectionOverlay.classList.replace('text-success','text-warning');
+                }
+                else if(seconds >= 8) {
+                    inspectionOverlay.classList.add('text-success');
+                }
+            }
+            else if(seconds < 17) {
+                inspectionOverlay.classList.replace('text-warning', 'text-danger');
+                inspectionCount.textContent = "+2";
+            }
+            else if(seconds < 20){
+                inspectionCount.textContent = "DNF";
+            }
+            else {
+                clearInspectionOverlay();
+            }
+        }, 1000);
+    }
+}
+
+function clearInspectionOverlay() {
+    if(inspectionInterval != null) {
+        inspectionOverlay.style.visibility = "hidden";
+        clearInterval(inspectionInterval);
+        inspectionInterval = null;
+    }
+}
+
+document.body.addEventListener('keydown', (event) => {
+    if(event.key == " ") {
+        renderInspection();
+    }
+    else {
+        clearInspectionOverlay();
+    }
+});

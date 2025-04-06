@@ -11,15 +11,74 @@
     width: 4rem;
 }
 
-#results thead th:not(:last-child):not(:first-child) {
+#ao12 > * {
+    border-bottom: 5px var(--bs-table-border-color) solid;
+}
+
+#results thead th, #results thead{
     position: sticky;
     top: 0;
+}
+
+#results thead th:not(:last-child):not(:first-child) {
     background-color: var(--bs-secondary-bg);
-    
     width: 8rem;
     min-width: 5rem;
 }
 
 .resultsTableContainer {
     overflow-y: auto;
+}
+
+#inspectionOverlay {
+    --bs-bg-opacity: 50%;
+    position: absolute;
+    font-size: 20em;
+    z-index: 1000;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#pageContainer .roomTimer {
+    visibility: collapse;
+    order: 3;
+}
+
+#pageContainer[data-connected] .roomTimer {
+    visibility: visible;
+}
+
+#pageContainer[data-connected]:not([data-has-scramble]) .roomTimer {
+    opacity: 50%;
+    pointer-events: none;
+}
+
+#pageContainer[data-has-scramble] .roomTimer {
+    opacity: 100%;
+    pointer-events: all;
+}
+
+#pageContainer:not([data-connected])::after {
+    content: "Connect to a room to get started.";
+    font-style: italic;
+    padding: 1rem;
+    order: 2;
+    text-align: center;
+}
+
+#pageContainer[data-connected]:not([data-has-scramble]):after {
+    content: "You are the only person in this room. Please set an event to continue.";
+    font-style: italic;
+    padding: 1rem;
+    order: 2;
+    text-align: center;
+}
+
+#pageContainer .navbar {
+    order: 1;
 }

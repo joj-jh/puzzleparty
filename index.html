@@ -25,7 +25,10 @@
         </svg>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 
-        <div class="d-flex flex-column" style="height: 100vh;">
+        <div id="inspectionOverlay" class="bg-body-tertiary" style="visibility: hidden;">
+            <span id="inspectionCount"></span>
+        </div>
+        <div class="d-flex flex-column" style="height: 100vh;" id="pageContainer">
             <nav class="navbar navbar-expand-lg bg-body-tertiary">
                 <div class="d-flex flex-row ps-4 pe-4 w-100">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-grid-3x3-gap-fill align-self-center me-2" viewBox="0 0 16 16">
@@ -54,7 +57,7 @@
                         <label class="btn btn-outline-primary" data-bs-theme-value="auto" for="autoMode"><svg class="bi theme-icon" fill="currentColor"><use href="#circle-half"></use></svg></label>
                     </div>
             </nav>
-            <div class="container-fluid">
+            <div class="container-fluid roomTimer">
                 <div class="text-center grid h-100">
                     <div class="row pt-3 pb-3">
                         <div class="col">
@@ -66,6 +69,20 @@
                             <div class="row">
                                 <div class="col">
                                     <div class="d-flex align-items-stretch justify-content-center h-100">
+                                        <div class="d-flex flex-column justify-content-center h-100 me-5">
+                                            <div class="form-check d-flex">
+                                                <input class="form-check-input me-2" type="checkbox" id="inspection">
+                                                <label class="form-check-label" for="inspection">
+                                                    Inspection
+                                                </label>
+                                            </div>
+                                            <div class="form-check d-flex">
+                                                <input class="form-check-input me-2" type="checkbox" id="manualEntry">
+                                                <label class="form-check-label" for="manualEntry">
+                                                    Manual Entry
+                                                </label>
+                                            </div>
+                                        </div>
                                         <input class="fs-1 w-50 me-2 form-control" type="text" id="time" style="min-width: 20rem;"/>
                                         <div class="d-flex flex-column justify-content-center h-100 ">
                                             <div class="form-check d-flex">
@@ -93,9 +110,9 @@
                     </div>
                 </div>
             </div>
-            <div class="overflow-y-auto flex-grow-1 flex-column">
+            <div class="overflow-y-auto flex-grow-1 flex-column roomTimer">
                 <table class="table table-bordered" id="results">
-                    <thead>
+                    <thead class="bg-body-tertiary">
                         <tr id="resultsHead">
 
                         </tr>
