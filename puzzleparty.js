@@ -4,6 +4,8 @@ import {joinRoom} from './trystero-nostr.min.js'
 // https://github.com/cs0x7f/cstimer/blob/released/UsingAsWorkerDemo.md
 //https://github.com/dmotz/trystero
 
+const roomName = document.getElementById('room');
+const userName = document.getElementById('username');
 const connectButton = document.getElementById("connect");
 const eventsList = document.getElementById('events');
 const scramble = document.getElementById('scramble');
@@ -96,6 +98,7 @@ window.onload = function() {
         });
         eventsList.appendChild(li);
     })
+    selectedEventButton.setAttribute("disabled", "");
 
     if (!Array.prototype.last){
         Array.prototype.last = function(){
@@ -111,6 +114,10 @@ function* takeWhile(fn, xs) {
             yield x;
         else
             break;
+}
+
+function isEmptyOrSpaces(s) {
+    return s === null || s.match(/^ *$/) !== null;
 }
 
 var room;
@@ -194,11 +201,40 @@ connectButton.addEventListener('click', () => {
     }
 });
 
+function ensureInputNotNull(input, onChange = () => {}) {
+    const callback = event => {
+        if(isEmptyOrSpaces(input.value)) {
+            input.classList.add("is-invalid");
+        }
+        else {
+            input.classList.remove("is-invalid");
+        }
+        onChange();
+    };
+    input.addEventListener('input', callback);
+    callback()
+}
+
+function updateConnectButtonEnabled() {
+    if(!isEmptyOrSpaces(roomName.value) && !isEmptyOrSpaces(userName.value)) {
+        connectButton.removeAttribute("disabled");
+    }
+    else {
+        connectButton.setAttribute("disabled", "");
+    }
+}
+
+userName.value = localStorage.getItem("user_id") ?? "";
+ensureInputNotNull(roomName, updateConnectButtonEnabled);
+ensureInputNotNull(userName, updateConnectButtonEnabled);
+
 function setupRoom() {
     console.log("making room");
-    
-    const room_id = document.getElementById('room').value;
-    const user_id = document.getElementById('username').value ?? 'anonymous';
+
+    const room_id = roomName.value;
+    const user_id = userName.value;
+
+    localStorage.setItem("user_id", user_id);
 
     // room = joinRoom(config, room_id);
     room = {
@@ -273,10 +309,15 @@ function setupRoom() {
     });
     
     pageContainer.setAttribute("data-connected",'');
+    selectedEventButton.removeAttribute("disabled");
 }
 
 function leaveRoom() {
+    room.leave();
+    room = null;
+    messages = new Map();
     pageContainer.removeAttribute("data-connected");
+    selectedEventButton.setAttribute("disabled", "");
 }
 
 time.addEventListener('keyup', (event) => {

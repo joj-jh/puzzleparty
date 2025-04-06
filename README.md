@@ -1,10 +1,11 @@
 Open the webpage at https://joj-jh.github.io/puzzleparty.
 
 Todo:
-- Connect/disconnect button logic
-  - Only show when valid inputs
-  - Validation highlighting (ensuring username is not blank)
-  - Store username from previous sessions
+- ~~Connect/disconnect button logic~~
+  - ~~Leave room option~~
+  - ~~Only show when valid inputs~~
+  - ~~Validation highlighting (ensuring username is not blank)~~
+  - ~~Store username from previous sessions~~
 - Switch out to nostr version of trystero (torrent version is failing for me)
 - ~~Hide stuff until connection is made (looks bad)~~
 - Make sure current system initiates syncing of messages properly
@@ -24,5 +25,6 @@ Todo:
 - Timing options
   - ~~Inspection~~
   - Spacebar/input/touchscreen tap
+- Favicon
 
 

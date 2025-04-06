@@ -71,7 +71,7 @@
     text-align: center;
 }
 
-#pageContainer[data-connected]:not([data-has-scramble]):after {
+#pageContainer[data-connected]:not([data-has-scramble])::after {
     content: "You are the only person in this room. Please set an event to continue.";
     font-style: italic;
     padding: 1rem;
@@ -81,4 +81,17 @@
 
 #pageContainer .navbar {
     order: 1;
+}
+
+#room, #username {
+    min-width: 10rem;
+    max-width: 15rem;
+}
+
+#pageContainer[data-connected] #connect::after {
+    content: "Exit";
+}
+
+#pageContainer #connect::after {
+    content: "Join";
 }
