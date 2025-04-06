@@ -248,17 +248,22 @@ function setupRoom() {
 
     localStorage.setItem("user_id", user_id);
 
-    // room = joinRoom(config, room_id);
-    room = {
-        selfId: "not a real id", 
-        getPeers() { return new Map();} ,
-        makeAction(a) { return [(x) => {}, (d,a='') => {} ]},
-        onPeerJoin(_) {},
-        onPeerLeave(_) {},
-    };
+    // Check if hosted on github pages or just locally for tests
+    if(window.location.toString().includes("github")) {
+        room = joinRoom(config, room_id);
+    }
+    else {
+        console.log(`'github' not found in url (${window.location.toString()}) - using dummy room object for testing.`);
+        room = {
+            selfId: "not a real id", 
+            getPeers() { return new Map();} ,
+            makeAction(a) { return [(x) => {}, (d,a='') => {} ]},
+            onPeerJoin(_) {},
+            onPeerLeave(_) {},
+        };
+    }
+
     updateMembers();
-
-
 
     setName = makeAction({
         room: room,
