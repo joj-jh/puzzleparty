@@ -10,6 +10,7 @@ const connectButton = document.getElementById("connect");
 const eventsList = document.getElementById('events');
 const scramble = document.getElementById('scramble');
 const selectedEventButton = document.getElementById('selectedEvent');
+const results = document.getElementById('results');
 const resultsHead = document.getElementById('resultsHead');
 const resultsBody= document.getElementById('resultsBody');
 const wins = document.getElementById('wins');
@@ -24,7 +25,18 @@ const manualEntry = document.getElementById('manualEntry');
 const inspection = document.getElementById('inspection');
 const inspectionCount = document.getElementById('inspectionCount');
 const pageContainer = document.getElementById('pageContainer');
-                    
+
+// Edit time modal
+const editPlusTwo = document.getElementById('editPlusTwo');
+const editDnf = document.getElementById('editDnf');
+const editTime = document.getElementById('editTime');
+const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+// Scramble preview modal
+const scrambleModal = new bootstrap.Modal(document.getElementById('scrambleModal'));
+const viewScrambleImage = document.getElementById('viewScrambleImage');
+const viewScramble = document.getElementById('viewScramble');
+
 //initialize the scramble provider worker
 var cstimerWorker = (function() {
 	var worker = new Worker('cstimer_module.js');
@@ -320,37 +332,44 @@ function leaveRoom() {
     selectedEventButton.setAttribute("disabled", "");
 }
 
-time.addEventListener('keyup', (event) => {
-    var content = "000000" + time.value.replace(/\s/g, "");;
-    if(isNaN(content)) {
-        time.classList.add("is-invalid");
-    }
-    else {
-        time.classList.remove("is-invalid");
-    }
-
-    if(event.key == "Enter") {
-        try {
-            var ms = parseInt(content.substring(content.length-2)) * 10;
-            ms += parseInt(content.substring(content.length-4,content.length-2))*1000;
-            ms += parseInt(content.substring(0,content.length-4))*60000;
-            if(!isNaN(content)) {
-                postSolve(
-                    new Solve(
-                        room.selfId, 
-                        messages.get('scramble').length-1, 
-                        ms, 
-                        plusTwo.checked, 
-                        dnf.checked
-                    )
-                );
-                time.value = "";
+// Function to set up text inputs to validate solve time entry
+function setupTimeInput(timeInput, onSubmit) {
+    timeInput.addEventListener('keyup', (event) => {
+        var content = "000000" + timeInput.value.replace(/\s/g, "");;
+        if(isNaN(content)) {
+            timeInput.classList.add("is-invalid");
+        }
+        else {
+            timeInput.classList.remove("is-invalid");
+        }
+    
+        if(event.key == "Enter") {
+            try {
+                var ms = parseInt(content.substring(content.length-2)) * 10;
+                ms += parseInt(content.substring(content.length-4,content.length-2))*1000;
+                ms += parseInt(content.substring(0,content.length-4))*60000;
+                if(!isNaN(content)) {
+                    onSubmit(ms);
+                    timeInput.value = "";
+                }
+            }
+            catch(e) {
+                console.log(e);
             }
         }
-        catch(e) {
-            console.log(e);
-        }
-    }
+    });
+}
+
+setupTimeInput(time, ms => {
+    postSolve(
+        new Solve(
+            room.selfId, 
+            messages.get('scramble').length-1, 
+            ms, 
+            plusTwo.checked, 
+            dnf.checked
+        )
+    );
 });
 
 // wraps room makeAction method - adds messages to history lists
@@ -390,19 +409,23 @@ function updateScramble() {
     if(scram != null && eventType != null) {
         scramble.textContent = scram;
         pageContainer.setAttribute("data-has-scramble", "");
-        cstimerWorker
-            .getImage(scram, eventType)
-            .then(svgImage => {
-                var template = document.createElement('template');
-                template.innerHTML = svgImage;
-                var svg = template.content.firstChild;
-                svg.setAttribute('viewBox', `0 0 ${svg.getAttribute('width')} ${svg.getAttribute('height')}`);
-                svg.removeAttribute('width');
-                svg.removeAttribute('height');
-                document.getElementById('drawScramble').innerHTML = template.innerHTML;
-            });
+        createScrambleImage(scram, eventType).then(h => document.getElementById('drawScramble').innerHTML = h);
         renderResults();
     }
+}
+
+async function createScrambleImage(scramble, eventType) {
+    var svgImage = await cstimerWorker.getImage(scramble, eventType);
+    
+    var template = document.createElement('template');
+    template.innerHTML = svgImage;
+    var svg = template.content.firstChild;
+    svg.setAttribute('viewBox', `0 0 ${svg.getAttribute('width')} ${svg.getAttribute('height')}`);
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    const dynamicSvg = template.innerHTML;
+    template.remove();
+    return dynamicSvg;
 }
 
 function genScramble() {
@@ -495,13 +518,14 @@ function renderResults() {
         rowCount++;
     });
 
-    messages.get('solve').forEach(solve => {
+    messages.get('solve').forEach((solve) => {
         if(columnIndex.has(solve.solverId)){
             var tableEntry = resultsBody.children[rowCount - 1 - solve.scrambleIndex].children[columnIndex.get(solve.solverId)+1];
             solvesByMember.get(solve.solverId)[solve.scrambleIndex] = solve;
             tableEntry.textContent = solve.format();
             tableEntry.setAttribute('data-plustwo', solve.plusTwo.toString());
             tableEntry.setAttribute('data-dnf', solve.dnf.toString());
+            tableEntry.setAttribute('data-solve-index', solve.scrambleIndex);
         }
     });
 
@@ -630,5 +654,53 @@ document.body.addEventListener('keydown', (event) => {
     }
     else {
         clearInspectionOverlay();
+    }
+});
+
+// Solve selection and editing:
+//--------------------------------------------------------
+
+setupTimeInput(editTime, ms => {
+    postSolve(
+        new Solve(
+            room.selfId, 
+            selectedSolveIndex, 
+            ms, 
+            editPlusTwo.checked, 
+            editDnf.checked
+        )
+    );
+    editModal.hide();
+});
+
+var selectedSolveIndex = null;
+resultsBody.addEventListener('click', event => {
+    // Handle clicking and showing editor modal
+    var cell = event.target.closest('td');
+    if(cell) {
+        selectedSolveIndex = parseInt(cell.getAttribute('data-solve-index'));
+        if(selectedSolveIndex != null) {
+            const solve = messages.get('solve')[selectedSolveIndex];
+            editDnf.checked = solve.dnf;
+            editPlusTwo.checked = solve.plusTwo;
+            editTime.value = "";
+            editModal.show();
+        }
+    }
+
+    // Handle clicking and showing scramble modal
+    cell = event.target.closest('th');
+    if(cell) {
+        var scrambleIndex = parseInt(cell.textContent);
+        if(scrambleIndex != null) {
+            scrambleIndex -= 1; // Convert for use with 0-indexed arrays
+            const scram = messages.get('scramble')[scrambleIndex];
+            const eventType = messages.get('event').last().eventId;
+            if(scram && eventType) {
+                viewScramble.textContent = scram.scramble;
+                createScrambleImage(scram.scramble, eventType).then(h => viewScrambleImage.innerHTML = h);
+                scrambleModal.show();
+            }
+        }
     }
 });

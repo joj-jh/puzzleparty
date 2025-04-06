@@ -15,7 +15,7 @@ Todo:
     - Check time difference when a user joins and then notify them if they are lagging/leading
 - ~~Add scrolling to grid~~
   - ~~Sticky header~~
-- Enable selecting and editing cells
+- ~~Enable selecting and editing cells~~
 - Incremental rendering updates instead of refreshing whole table
 - ~~Stats (wins, ao5, mean etc.)~~
 - Password protected rooms
@@ -26,5 +26,7 @@ Todo:
   - ~~Inspection~~
   - Spacebar/input/touchscreen tap
 - Favicon
-
+- ~~View old scrambles~~
+  - ~~Cell select for number?~~
+- Fix big cube scrambles (need more parameters?)
 

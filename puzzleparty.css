@@ -95,3 +95,12 @@
 #pageContainer #connect::after {
     content: "Join";
 }
+
+#resultsBody td[data-solve-index]:hover, #resultsBody th:hover {
+    cursor: pointer;
+}
+
+#viewScrambleImage {
+    width: 20rem;
+    height: 20rem;
+}

@@ -25,9 +25,8 @@
         </svg>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 
-        <div id="inspectionOverlay" class="bg-body-tertiary" style="visibility: hidden;">
-            <span id="inspectionCount"></span>
-        </div>
+
+
         <div class="d-flex flex-column" style="height: 100vh;" id="pageContainer">
             <nav class="navbar navbar-expand-lg bg-body-tertiary">
                 <div class="d-flex flex-row ps-4 pe-4 w-100">
@@ -135,5 +134,57 @@
                 </table>
             </div>
         </div>
+
+        <div id="inspectionOverlay" class="bg-body-tertiary" style="visibility: hidden;">
+            <span id="inspectionCount"></span>
+        </div>
+
+        <div class="modal" tabindex="-1" id="editModal">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Edit Result</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-stretch justify-content-center h-100">
+                        <input class="fs-1 w-50 me-2 form-control" type="text" id="editTime" style="min-width: 20rem;"/>
+                        <div class="d-flex flex-column justify-content-center h-100 ">
+                            <div class="form-check d-flex">
+                                <input class="form-check-input me-2" type="checkbox" id="editPlusTwo">
+                                <label class="form-check-label" for="editPlusTwo">
+                                    +2
+                                </label>
+                            </div>
+                            <div class="form-check d-flex">
+                                <input class="form-check-input me-2" type="checkbox" id="editDnf">
+                                <label class="form-check-label" for="editDnf">
+                                    DNF
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  <span>Hit enter to submit a new time.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal" tabindex="-1" id="scrambleModal">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">View Scramble</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="viewScrambleImage"></div>
+                    <p id="viewScramble" class="fs-4"></p>
+                </div>
+              </div>
+            </div>
+          </div>
     </body>
 </html>
