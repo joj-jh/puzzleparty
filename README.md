@@ -28,5 +28,5 @@ Todo:
 - Favicon
 - ~~View old scrambles~~
   - ~~Cell select for number?~~
-- Fix big cube scrambles (need more parameters?)
-
+- ~~Fix big cube scrambles (need more parameters?)~~
+- Pre-gen 4x4 scrambles to prevent long wait

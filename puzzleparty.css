@@ -72,7 +72,7 @@
 }
 
 #pageContainer[data-connected]:not([data-has-scramble])::after {
-    content: "You are the only person in this room. Please set an event to continue.";
+    content: "Generating scramble...";
     font-style: italic;
     padding: 1rem;
     order: 2;
@@ -103,4 +103,8 @@
 #viewScrambleImage {
     width: 20rem;
     height: 20rem;
+}
+
+#drawScramble {
+    max-height: 30rem;
 }

@@ -105,7 +105,7 @@ window.onload = function() {
         li.setAttribute('data-value', e[1]);
         li.addEventListener('click', () => {
             if(messages.get('event') != e[1]) {
-                setEvent({date: Date.now(), eventId: e[1], eventName: e[0]});
+                setEvent({date: Date.now(), eventId: e[1], eventName: e[0], scrambleLength: e[2]});
             }
         });
         eventsList.appendChild(li);
@@ -258,6 +258,8 @@ function setupRoom() {
     };
     updateMembers();
 
+
+
     setName = makeAction({
         room: room,
         actionName: 'name',
@@ -319,6 +321,11 @@ function setupRoom() {
     room.onPeerLeave(peerId => { 
         updateMembers();
     });
+
+    // Default event to 3x3
+    if(members.length == 1 && isHost) {
+        setEvent({date: Date.now(), eventId: wca_events[0][1], eventName: wca_events[0][0], scrambleLength: wca_events[0][2]});
+    }
     
     pageContainer.setAttribute("data-connected",'');
     selectedEventButton.removeAttribute("disabled");
@@ -408,6 +415,13 @@ function updateScramble() {
     const eventType = messages.get('event').last()?.eventId;
     if(scram != null && eventType != null) {
         scramble.textContent = scram;
+        if(scram.length > 120) {
+            scramble.classList.replace('fs-1', 'fs-3');
+        }
+        else {
+            scramble.classList.replace('fs-3','fs-1');
+
+        }
         pageContainer.setAttribute("data-has-scramble", "");
         createScrambleImage(scram, eventType).then(h => document.getElementById('drawScramble').innerHTML = h);
         renderResults();
@@ -429,8 +443,9 @@ async function createScrambleImage(scramble, eventType) {
 }
 
 function genScramble() {
+    const lastEvent = messages.get('event').last();
     cstimerWorker
-        .getScramble(messages.get('event').last().eventId)
+        .getScramble(lastEvent.eventId, lastEvent.scrambleLength)
         .then(scram => {
             setScramble({date: Date.now(), scramble: scram});
         });
@@ -698,8 +713,11 @@ resultsBody.addEventListener('click', event => {
             const eventType = messages.get('event').last().eventId;
             if(scram && eventType) {
                 viewScramble.textContent = scram.scramble;
-                createScrambleImage(scram.scramble, eventType).then(h => viewScrambleImage.innerHTML = h);
-                scrambleModal.show();
+                createScrambleImage(scram.scramble, eventType)
+                    .then(h => {
+                        viewScrambleImage.innerHTML = h;
+                        scrambleModal.show();
+                    });
             }
         }
     }
