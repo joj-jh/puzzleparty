@@ -99,6 +99,7 @@ var wca_events = [
 ];
 
 window.onload = function() {
+    // Add events to dropdown
     wca_events.forEach(e => {
         var li = document.createElement('li');
         li.innerHTML = e[0];
@@ -112,11 +113,17 @@ window.onload = function() {
     })
     selectedEventButton.setAttribute("disabled", "");
 
+    // Add utility last() method
     if (!Array.prototype.last){
         Array.prototype.last = function(){
             return this.length > 0 ? this[this.length - 1] : null;
         };
     };
+
+    // Get saved/url param info to try auto connect room
+    userNameInput.setValue(localStorage.getItem("user_id") ?? "");
+    syncUrlAndPageState();
+    tryAutoConnect();
 };
 
 // Utility generator
@@ -213,18 +220,34 @@ connectButton.addEventListener('click', () => {
     }
 });
 
-function ensureInputNotNull(input, onChange = () => {}) {
-    const callback = event => {
-        if(isEmptyOrSpaces(input.value)) {
-            input.classList.add("is-invalid");
+class ValidatedTextbox {
+    constructor(input, validateFunction, onValueChange) {
+        this.validateFunction = validateFunction;
+        this.input = input;
+        this.onValueChange = onValueChange;
+
+        this.input.addEventListener('input', () => {
+            this.#validate();
+            this.onValueChange();
+        })
+    }
+
+    setValue(val) {
+        if(this.input.value != val) {
+            this.input.value = val;
+            this.#validate();
+            this.onValueChange();
         }
-        else {
-            input.classList.remove("is-invalid");
+    }
+
+    #validate() {
+        if(this.validateFunction(this.input.value)) {
+            this.input.classList.remove("is-invalid");
         }
-        onChange();
-    };
-    input.addEventListener('input', callback);
-    callback()
+        else if(!this.input.classList.contains("is-invalid")) {
+            this.input.classList.add("is-invalid");
+        }
+    }
 }
 
 function updateConnectButtonEnabled() {
@@ -236,9 +259,13 @@ function updateConnectButtonEnabled() {
     }
 }
 
-userName.value = localStorage.getItem("user_id") ?? "";
-ensureInputNotNull(roomName, updateConnectButtonEnabled);
-ensureInputNotNull(userName, updateConnectButtonEnabled);
+const userNameInput = new ValidatedTextbox(userName, s => !isEmptyOrSpaces(s), updateConnectButtonEnabled);
+const roomNameInput = new ValidatedTextbox(
+    roomName, 
+    s => !isEmptyOrSpaces(s), 
+    updateConnectButtonEnabled,
+
+);
 
 function setupRoom() {
     console.log("making room");
@@ -260,9 +287,11 @@ function setupRoom() {
             makeAction(a) { return [(x) => {}, (d,a='') => {} ]},
             onPeerJoin(_) {},
             onPeerLeave(_) {},
+            leave() {}
         };
     }
 
+    syncUrlAndPageState();
     updateMembers();
 
     setName = makeAction({
@@ -289,7 +318,6 @@ function setupRoom() {
             updateEvent();
         },
         onAfterSendHandler: (data, peerId) => {
-            console.log("setting event")
             updateEvent();
         }
     });
@@ -342,6 +370,8 @@ function leaveRoom() {
     messages = new Map();
     pageContainer.removeAttribute("data-connected");
     selectedEventButton.setAttribute("disabled", "");
+    roomNameInput.setValue("");
+    clearUrlParams();
 }
 
 // Function to set up text inputs to validate solve time entry
@@ -727,3 +757,35 @@ resultsBody.addEventListener('click', event => {
         }
     }
 });
+
+// URL parameters and initialisation
+//--------------------------------------------------------
+
+function clearUrlParams() {
+    var params = new URLSearchParams(window.location.search);
+    params.delete('room');
+    console.log(params.toString());
+    window.history.replaceState({}, "", `?${params.toString()}`)
+    //window.location.search = params.toString();
+}
+
+function syncUrlAndPageState() {
+    var params = new URLSearchParams(window.location.search);
+    var roomNameParam = params.get('room');
+
+    if(roomNameParam != roomName.value && !isEmptyOrSpaces(roomName.value) && roomNameParam == null) { // If text box has value and url null, set url
+        params.set('room', roomName.value.toString());
+        console.log(params.toString());
+        window.history.replaceState({}, "", `?${params.toString()}`)
+        ///window.location.search = params.toString();
+    }
+    else { // Treat url as source of truth
+        roomNameInput.setValue(roomNameParam ?? "");
+    }
+}
+
+function tryAutoConnect() {
+    if(room == null && !isEmptyOrSpaces(roomName.value) && !isEmptyOrSpaces(userName.value)) {
+        setupRoom();
+    }
+}

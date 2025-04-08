@@ -19,14 +19,23 @@ Todo:
 - Incremental rendering updates instead of refreshing whole table
 - ~~Stats (wins, ao5, mean etc.)~~
 - Password protected rooms
-- Url route parameters for link sharing
+- ~~Url route parameters for link sharing~~
 - Custom indicator sounds on new scramble
 - Mobile support
+  - Dynamic layout
+  - Scrollable scrambles
+  - Horizontal scroll of results table
+  - Hook up inspection and solve events
+  - QR code reading to easily share rooms
+    - 1 solve per minute auto timer (iykyk)
 - Timing options
   - ~~Inspection~~
   - Spacebar/input/touchscreen tap
-- Favicon
+- ~~Favicon~~
 - ~~View old scrambles~~
   - ~~Cell select for number?~~
 - ~~Fix big cube scrambles (need more parameters?)~~
 - Pre-gen 4x4 scrambles to prevent long wait
+- User status announcements
+  - Spectate
+- Username updates
