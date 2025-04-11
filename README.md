@@ -30,7 +30,7 @@ Todo:
     - 1 solve per minute auto timer (iykyk)
 - Timing options
   - ~~Inspection~~
-  - Spacebar/input/touchscreen tap
+  - ~~Spacebar/input~~/touchscreen tap
 - ~~Favicon~~
 - ~~View old scrambles~~
   - ~~Cell select for number?~~

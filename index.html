@@ -29,8 +29,8 @@
 
         <div class="d-flex flex-column" style="height: 100vh;" id="pageContainer">
             <nav class="navbar navbar-expand-lg bg-body-tertiary">
-                <div class="d-flex flex-row ps-4 pe-4 w-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-grid-3x3-gap-fill align-self-center me-2" viewBox="0 0 16 16">
+                <div class="d-flex flex-row ps-4 pe-4 w-100 flex-wrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-grid-3x3-gap-fill align-self-center me-2" viewBox="0 0 16 16">
                         <path d="M1 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1zM1 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1z"/>
                     </svg>
                     <a class="navbar-brand me-auto" href="#">PuzzleParty</a>
@@ -45,7 +45,7 @@
     
                         </ul>
                     </div>
-                    <div class="btn-group" role="group" aria-label="Basic radio toggle button group">
+                    <div class="btn-group ms-2" role="group" aria-label="Basic radio toggle button group">
                         <input type="radio" class="btn-check" name="btnRadio" id="lightMode" autocomplete="off">
                         <label class="btn btn-outline-primary" data-bs-theme-value="light" for="lightMode"><svg class="bi theme-icon" fill="currentColor"><use href="#sun-fill"></use></svg></label>
                     
@@ -67,33 +67,18 @@
                             </div>
                             <div class="row">
                                 <div class="col">
-                                    <div class="d-flex align-items-stretch justify-content-center h-100">
-                                        <div class="d-flex flex-column justify-content-center h-100 me-5">
-                                            <div class="form-check d-flex">
-                                                <input class="form-check-input me-2" type="checkbox" id="inspection">
+                                    <div class="d-flex align-items-stretch justify-content-center h-100" id="mainTimerContainer">
+                                        <div class="d-flex flex-column justify-content-center h-100 me-5" style="min-width: 10rem;">
+                                            <div class="form-check form-switch d-flex">
+                                                <input class="form-check-input me-2" type="checkbox" id="inspection" role="switch">
                                                 <label class="form-check-label" for="inspection">
                                                     Inspection
                                                 </label>
                                             </div>
-                                            <div class="form-check d-flex">
-                                                <input class="form-check-input me-2" type="checkbox" id="manualEntry">
+                                            <div class="form-check form-switch d-flex">
+                                                <input class="form-check-input me-2" type="checkbox" id="manualEntry" role="switch">
                                                 <label class="form-check-label" for="manualEntry">
                                                     Manual Entry
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <input class="fs-1 w-50 me-2 form-control" type="text" id="time" style="min-width: 20rem;"/>
-                                        <div class="d-flex flex-column justify-content-center h-100 ">
-                                            <div class="form-check d-flex">
-                                                <input class="form-check-input me-2" type="checkbox" id="plusTwo">
-                                                <label class="form-check-label" for="plusTwo">
-                                                    +2
-                                                </label>
-                                            </div>
-                                            <div class="form-check d-flex">
-                                                <input class="form-check-input me-2" type="checkbox" id="dnf">
-                                                <label class="form-check-label" for="dnf">
-                                                    DNF
                                                 </label>
                                             </div>
                                         </div>
@@ -147,26 +132,7 @@
                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="d-flex align-items-stretch justify-content-center h-100">
-                        <input class="fs-1 w-50 me-2 form-control" type="text" id="editTime" style="min-width: 20rem;"/>
-                        <div class="d-flex flex-column justify-content-center h-100 ">
-                            <div class="form-check d-flex">
-                                <input class="form-check-input me-2" type="checkbox" id="editPlusTwo">
-                                <label class="form-check-label" for="editPlusTwo">
-                                    +2
-                                </label>
-                            </div>
-                            <div class="form-check d-flex">
-                                <input class="form-check-input me-2" type="checkbox" id="editDnf">
-                                <label class="form-check-label" for="editDnf">
-                                    DNF
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                  <span>Hit enter to submit a new time.</span>
+
                 </div>
               </div>
             </div>
@@ -186,5 +152,31 @@
               </div>
             </div>
           </div>
+
+        <template id="timeEntryTemplate">
+            <div class="d-flex align-items-stretch justify-content-center w-100 h-100 timeEntryContainer">
+                <div class="position-relative me-2 h-100 flex-grow-1">
+                    <div class="fs-1 form-control inspectionOverlay" data-seconds="0"></div>
+                    <input class="fs-1 form-control manualEntry h-100" type="text" style="min-width: 20rem;"/>
+                    <div class="fs-1 form-control timerEntry h-100" style="min-width: 20rem;"></div>
+                </div>
+                <div class="d-flex flex-column justify-content-center h-100 ">
+                    <div class="form-check form-switch d-flex">
+                        <input class="form-check-input me-2 plusTwoCheck" type="checkbox" role="switch">
+                        <label class="form-check-label">
+                            +2
+                        </label>
+                    </div>
+                    <div class="form-check form-switch d-flex">
+                        <input class="form-check-input me-2 dnfCheck" type="checkbox" role="switch">
+                        <label class="form-check-label">
+                            DNF
+                        </label>
+                    </div>
+                    <button class="btn btn-primary">Submit</div>
+                </div>
+                
+            </div>
+        </template>
     </body>
 </html>

@@ -17,19 +17,10 @@ const wins = document.getElementById('wins');
 const single = document.getElementById('single');
 const ao5 = document.getElementById('ao5');
 const ao12 = document.getElementById('ao12');
-const plusTwo = document.getElementById('plusTwo');
-const dnf = document.getElementById('dnf');
-const time = document.getElementById('time');
-const inspectionOverlay = document.getElementById('inspectionOverlay');
 const manualEntry = document.getElementById('manualEntry');
-const inspection = document.getElementById('inspection');
-const inspectionCount = document.getElementById('inspectionCount');
 const pageContainer = document.getElementById('pageContainer');
 
 // Edit time modal
-const editPlusTwo = document.getElementById('editPlusTwo');
-const editDnf = document.getElementById('editDnf');
-const editTime = document.getElementById('editTime');
 const editModal = new bootstrap.Modal(document.getElementById('editModal'));
 
 // Scramble preview modal
@@ -139,6 +130,12 @@ function isEmptyOrSpaces(s) {
     return s === null || s.match(/^ *$/) !== null;
 }
 
+function delay(time) {  
+    return new Promise(res => {
+        setTimeout(res,time)
+    })
+}
+
 var room;
 const config = {appId: 'puzzle_party_cube_race_server_nulgaria'};
 var messages = new Map();
@@ -221,13 +218,14 @@ connectButton.addEventListener('click', () => {
 });
 
 class ValidatedTextbox {
-    constructor(input, validateFunction, onValueChange) {
-        this.validateFunction = validateFunction;
+    constructor(input, convertFunction, onValueChange) {
+        this.convertFunction = convertFunction;
         this.input = input;
         this.onValueChange = onValueChange;
+        this.value = null;
 
         this.input.addEventListener('input', () => {
-            this.#validate();
+            this.#convert();
             this.onValueChange();
         })
     }
@@ -235,18 +233,22 @@ class ValidatedTextbox {
     setValue(val) {
         if(this.input.value != val) {
             this.input.value = val;
-            this.#validate();
+            this.#convert();
             this.onValueChange();
         }
     }
 
-    #validate() {
-        if(this.validateFunction(this.input.value)) {
+    #convert() {
+        var out = this.convertFunction(this.input.value);
+        if(out == null) {
+            if(!this.input.classList.contains("is-invalid")) {
+                this.input.classList.add("is-invalid");
+            }
+        }
+        else {
+            this.value = out;
             this.input.classList.remove("is-invalid");
-        }
-        else if(!this.input.classList.contains("is-invalid")) {
-            this.input.classList.add("is-invalid");
-        }
+        } 
     }
 }
 
@@ -259,12 +261,11 @@ function updateConnectButtonEnabled() {
     }
 }
 
-const userNameInput = new ValidatedTextbox(userName, s => !isEmptyOrSpaces(s), updateConnectButtonEnabled);
+const userNameInput = new ValidatedTextbox(userName, s => isEmptyOrSpaces(s) ? null : s, updateConnectButtonEnabled);
 const roomNameInput = new ValidatedTextbox(
     roomName, 
-    s => !isEmptyOrSpaces(s), 
+    s => isEmptyOrSpaces(s) ? null : s, 
     updateConnectButtonEnabled,
-
 );
 
 function setupRoom() {
@@ -374,46 +375,6 @@ function leaveRoom() {
     clearUrlParams();
 }
 
-// Function to set up text inputs to validate solve time entry
-function setupTimeInput(timeInput, onSubmit) {
-    timeInput.addEventListener('keyup', (event) => {
-        var content = "000000" + timeInput.value.replace(/\s/g, "");;
-        if(isNaN(content)) {
-            timeInput.classList.add("is-invalid");
-        }
-        else {
-            timeInput.classList.remove("is-invalid");
-        }
-    
-        if(event.key == "Enter") {
-            try {
-                var ms = parseInt(content.substring(content.length-2)) * 10;
-                ms += parseInt(content.substring(content.length-4,content.length-2))*1000;
-                ms += parseInt(content.substring(0,content.length-4))*60000;
-                if(!isNaN(content)) {
-                    onSubmit(ms);
-                    timeInput.value = "";
-                }
-            }
-            catch(e) {
-                console.log(e);
-            }
-        }
-    });
-}
-
-setupTimeInput(time, ms => {
-    postSolve(
-        new Solve(
-            room.selfId, 
-            messages.get('scramble').length-1, 
-            ms, 
-            plusTwo.checked, 
-            dnf.checked
-        )
-    );
-});
-
 // wraps room makeAction method - adds messages to history lists
 // history lists allow for easily onboarding new peers as they join
 function makeAction({
@@ -426,14 +387,16 @@ function makeAction({
     
     const [send, onGet] = room.makeAction(actionName);
     onGet((data, peerId) => {
-        if(data.date < Date.now() + 100) { // Don't accept messages from time travellers ()
-            messages.get(actionName).push(data).sort((a, b) => a.date - b.date)
+        if(data.date < Date.now() + 100) { // Don't accept messages from time travellers
+            messages.get(actionName).push(data);
+            messages.get(actionName).sort((a, b) => b.date - a.date);
             onAfterReceivedHandler(data, peerId);
         }
     });
 
     const customSend =  (data, peerId='') => {
         messages.get(actionName).push(data);
+        messages.get(actionName).sort((a, b) => b.date - a.date);
         if(peerId == '') {
             send(data);
         }
@@ -630,7 +593,6 @@ function getTruncatedMeans(solves, meanSize) {
         }
         else {
             means.last = new Time((sum - min - max)/(meanSize-2));
-            console.log(means.last.format());
         }
 
         if(means.last < means.best || means.best.millis == null) {
@@ -640,88 +602,331 @@ function getTruncatedMeans(solves, meanSize) {
     return means;
 }
 
-// Inspection overlay:
+// URL parameters and initialisation
 //--------------------------------------------------------
-function canInspect() {
-    if(room != null) {
-        const lastScramble = messages.get('scramble').last();
-        return inspection.checked && 
-            inspectionInterval == null &&
-            messages.get('scramble').length > 0 &&
-            !takeWhile(s => s.date > lastScramble.date , messages.get('solve'))
-                .some(s => s.solverId == room.selfId);
+
+function clearUrlParams() {
+    var params = new URLSearchParams(window.location.search);
+    params.delete('room');
+    window.history.replaceState({}, "", `?${params.toString()}`)
+    //window.location.search = params.toString();
+}
+
+function syncUrlAndPageState() {
+    var params = new URLSearchParams(window.location.search);
+    var roomNameParam = params.get('room');
+
+    if(roomNameParam != roomName.value && !isEmptyOrSpaces(roomName.value) && roomNameParam == null) { // If text box has value and url null, set url
+        params.set('room', roomName.value.toString());
+        window.history.replaceState({}, "", `?${params.toString()}`)
+        ///window.location.search = params.toString();
     }
-    else {
-        return false
+    else { // Treat url as source of truth
+        roomNameInput.setValue(roomNameParam ?? "");
     }
 }
 
-var inspectionInterval = null;
-function renderInspection() {
-    if(canInspect()) {
-        inspectionOverlay.classList.remove('text-success');
-        inspectionOverlay.classList.remove('text-warning');
-        inspectionOverlay.classList.remove('text-danger');
-        inspectionCount.textContent = "0";
-        inspectionOverlay.style.visibility = "visible";
-        var seconds = 0;
-        inspectionInterval = setInterval(() => {
-            seconds++;
-            if(seconds < 15) {
-                inspectionCount.textContent = seconds;
-                if(seconds >= 12) {
-                    inspectionOverlay.classList.replace('text-success','text-warning');
+function tryAutoConnect() {
+    if(room == null && !isEmptyOrSpaces(roomName.value) && !isEmptyOrSpaces(userName.value)) {
+        setupRoom();
+    }
+}
+
+// Time input component - spacebar, touch and manual entry:
+//--------------------------------------------------------
+
+const teState = {
+    Initialised: 'initialised',
+    Inspecting: 'inspecting',
+    HandsDown: 'handsDown',
+    ReadyToStart: 'readyToStart',
+    Timing: 'timing',
+    AwaitingEntry: 'awaitingEntry',
+}
+class TimeEntry {
+    constructor(container, onSubmit) {
+        // Component configuration
+        this.inspectionEnabled = true;
+        this.manualEntry = false;
+
+        // Component state
+        this.state = teState.Initialised;
+        this.lastHandsDown = null;
+        this.inspectionInterval = null;
+        this.inspectionSeconds = null;
+        this.startTimer = null;
+        this.stopTimer = null;
+
+        // Rendering stuff
+        this.container = document.getElementById('timeEntryTemplate').content.cloneNode(true).firstElementChild;
+        this.nodeInspectionOverlay = this.container.querySelector('.inspectionOverlay');
+        this.nodeTimerEntry = this.container.querySelector('.timerEntry')
+        this.nodePlusTwoCheck = this.container.querySelector('.plusTwoCheck');
+        this.nodeDnfCheck = this.container.querySelector('.dnfCheck');
+        this.nodeSubmitButton = this.container.querySelector('.btn');
+
+        this.nodeManualEntry = new ValidatedTextbox(
+            this.container.querySelector('.manualEntry'),
+            t => {
+                var content = "000000" + this.nodeManualEntry.input.value.replace(/[\s]/g, "");
+                if(isNaN(content)) {
+                    return null;
                 }
-                else if(seconds >= 8) {
-                    inspectionOverlay.classList.add('text-success');
+                else {
+                    var ms = parseInt(content.substring(content.length-2)) * 10;
+                    ms += parseInt(content.substring(content.length-4,content.length-2))*1000;
+                    ms += parseInt(content.substring(0,content.length-4))*60000;
+                    return ms;
                 }
+            },
+            () => {
+                this.startTimer = 0;
+                this.stopTimer = this.nodeManualEntry.value;
+                this.#setState(teState.AwaitingEntry);
             }
-            else if(seconds < 17) {
-                inspectionOverlay.classList.replace('text-warning', 'text-danger');
-                inspectionCount.textContent = "+2";
+        );
+
+        this.nodeManualEntry.input.addEventListener('keydown', (event) => {
+            if(event.key == "Enter") {
+                this.#submit();
             }
-            else if(seconds < 20){
-                inspectionCount.textContent = "DNF";
+            else if(!"123456890".includes(event.key) && ["Escape", "ArrowLeft", "ArrowRight", "Backspace", "Clear", "Delete"].indexOf(event.key) == -1) {
+                event.preventDefault();
+            }
+        });
+
+        container.appendChild(this.container);
+
+        // Handlers 
+        this.onSubmit = onSubmit
+
+        this.nodeSubmitButton.addEventListener('click', () => {
+            this.#submit();
+        })
+
+        // Render attributes
+        this.#setState(teState.Initialised);
+        this.setManualEntry(this.manualEntry);
+        this.enableInspection(this.inspectionEnabled);
+    }
+
+    initTime(solve) {
+        this.setManualEntry(true);
+        this.enableInspection(false);
+        this.nodeManualEntry.setValue(solve.time.format().replace(/\D/g, ""));
+    }
+
+    enableInspection(enabled) {
+        if([teState.Initialised, teState.AwaitingEntry].indexOf(this.state) != -1) {
+            this.inspectionEnabled = enabled;
+            this.container.setAttribute('data-inspection-enabled', enabled.toString());
+        }
+        return this.inspectionEnabled;
+    }
+
+    setManualEntry(manual) {
+        if(this.state == teState.Initialised) { // allow only when there's no data
+            this.manualEntry = manual;
+            this.container.setAttribute('data-manual-entry', manual.toString())
+        }
+        else if(this.state == teState.AwaitingEntry) {
+            const tmpTimeString = new Time(this.stopTimer - this.startTimer).format();
+            this.nodeManualEntry.setValue(tmpTimeString.replace(/\D/g, ""));
+            this.nodeTimerEntry.stringValue = tmpTimeString;
+            this.manualEntry = manual;
+            this.container.setAttribute('data-manual-entry', manual.toString())
+        }
+        return this.manualEntry;
+    }
+
+    async pressTimer() {
+        if(this.state == teState.Timing) {
+            this.#stopTimer();
+            this.#setState(teState.AwaitingEntry);
+        }
+        else if(this.state == teState.Initialised) {
+            if(this.inspectionEnabled) {
+                this.#inspect();
+                this.#setState(teState.Inspecting);
+            }
+            else if(!this.manualEntry) {
+                this.#setState(teState.HandsDown);
+                await this.#startHalfSecondDelay();
+            }
+        }
+        else if(this.state == teState.Inspecting && !this.manualEntry) {
+            this.#setState(teState.HandsDown);
+            await this.#startHalfSecondDelay();
+        }
+    }
+
+    releaseTimer() {
+        if(this.state == teState.HandsDown) {
+            if(this.inspectionEnabled) {
+                this.#setState(teState.Inspecting);
             }
             else {
-                clearInspectionOverlay();
+                this.#setState(teState.Initialised);
+            }
+        }
+        else if(this.state == teState.ReadyToStart) {
+            this.#stopInspection();
+            this.startTimer = Date.now();
+            this.#setState(teState.Timing);
+        }
+    }
+
+    tryCancelInspection() {
+        if(this.state == teState.Inspecting) {
+            this.#setState(teState.Initialised);
+            this.#stopInspection();
+        }
+    }
+
+    async #startHalfSecondDelay() {
+        this.lastHandsDown = Date.now();
+        const localLastHandsDown = this.lastHandsDown;
+        await delay(500);
+        if(this.lastHandsDown == localLastHandsDown && this.state == teState.HandsDown) {
+            this.#setState(teState.ReadyToStart);
+        }
+    }
+
+    #submit() {
+        if(this.state == teState.AwaitingEntry) {
+            this.onSubmit(this.stopTimer - this.startTimer, this.nodePlusTwoCheck.checked, this.nodeDnfCheck.checked);
+            this.nodeManualEntry.setValue("");
+            this.nodeTimerEntry.textContent = "";
+            this.nodeDnfCheck.checked = false;
+            this.nodePlusTwoCheck.checked = false;
+            this.#setState(teState.Initialised);
+            this.nodeSubmitButton.blur();
+            this.container.focus(); // pull focus away from button to avoid auto-submission
+        }
+    }
+
+    #inspect() {
+        if(this.inspectionInterval != null) {
+            clearInterval(this.inspectionInterval);
+        }
+
+        this.inspectionSeconds = 0;
+        this.nodeInspectionOverlay.setAttribute('data-seconds', this.inspectionSeconds);
+        this.inspectionInterval = setInterval(() => {
+            if(this.inspectionSeconds >= 17) {
+                this.#stopInspection();
+            } else {
+                this.inspectionSeconds++;
+                this.nodeInspectionOverlay.setAttribute('data-seconds', this.inspectionSeconds);
             }
         }, 1000);
     }
-}
 
-function clearInspectionOverlay() {
-    if(inspectionInterval != null) {
-        inspectionOverlay.style.visibility = "hidden";
-        clearInterval(inspectionInterval);
-        inspectionInterval = null;
+    #stopInspection() {
+        clearInterval(this.inspectionInterval);
+        this.inspectionInterval = null;
+    }
+
+    #stopTimer() {
+        this.stopTimer = Date.now();
+        this.nodeTimerEntry.textContent = new Time(this.stopTimer - this.startTimer).format();
+        if(this.inspectionSeconds >= 17) {
+            this.nodeDnfCheck.checked = true;
+        }   
+        else if(this.inspectionSeconds >= 15) {
+            this.nodePlusTwoCheck.checked = true;
+        }
+
+        this.nodeSubmitButton.removeAttribute('disabled', '');
+        this.nodeDnfCheck.removeAttribute('disabled', '');
+        this.nodePlusTwoCheck.removeAttribute('disabled', '');
+        this.nodeSubmitButton.focus();
+    }
+
+    #setState(newState) {
+        this.state = newState;  
+        this.container.setAttribute('data-state', this.state);
     }
 }
+
+const mainTimeInput = new TimeEntry(
+    document.getElementById('mainTimerContainer'),
+    (ms, p2, dnf) => {
+        postSolve(
+            new Solve(
+                room.selfId, 
+                messages.get('scramble').length-1, 
+                ms, 
+                p2, 
+                dnf
+            )
+        );
+    }
+);
+
+mainTimeInput.setManualEntry(manualEntry.checked);
+mainTimeInput.enableInspection(inspection.checked);
+inspection.addEventListener('change', () => { 
+    const resultingValue = mainTimeInput.enableInspection(inspection.checked); 
+    inspection.checked = resultingValue;
+    inspection.blur();
+});
+
+manualEntry.addEventListener('change', () => {
+    const resultingValue = mainTimeInput.setManualEntry(manualEntry.checked);
+    manualEntry.checked = resultingValue;
+    manualEntry.blur();
+});
 
 document.body.addEventListener('keydown', (event) => {
     if(event.key == " ") {
-        renderInspection();
+        mainTimeInput.pressTimer();
     }
     else {
-        clearInspectionOverlay();
+        mainTimeInput.tryCancelInspection();
+    }
+});
+
+document.body.addEventListener('keyup', (event) => {
+    if(event.key == " ") {
+        mainTimeInput.releaseTimer();
+    }
+    else {
+        mainTimeInput.tryCancelInspection();
     }
 });
 
 // Solve selection and editing:
 //--------------------------------------------------------
 
-setupTimeInput(editTime, ms => {
-    postSolve(
-        new Solve(
-            room.selfId, 
-            selectedSolveIndex, 
-            ms, 
-            editPlusTwo.checked, 
-            editDnf.checked
-        )
-    );
-    editModal.hide();
-});
+// setupTimeInput(editTime, ms => {
+//     postSolve(
+//         new Solve(
+//             room.selfId, 
+//             selectedSolveIndex, 
+//             ms, 
+//             editPlusTwo.checked, 
+//             editDnf.checked
+//         )
+//     );
+//     editModal.hide();
+// });
+
+const editTimeInput = new TimeEntry(
+    document.querySelector('#editModal .modal-body'),
+    (ms, p2, dnf) => {
+        postSolve(
+            new Solve(
+                room.selfId, 
+                selectedSolveIndex, 
+                ms, 
+                p2, 
+                dnf
+            )
+        );
+        editModal.hide();
+    }
+)
 
 var selectedSolveIndex = null;
 resultsBody.addEventListener('click', event => {
@@ -731,9 +936,7 @@ resultsBody.addEventListener('click', event => {
         selectedSolveIndex = parseInt(cell.getAttribute('data-solve-index'));
         if(selectedSolveIndex != null) {
             const solve = messages.get('solve')[selectedSolveIndex];
-            editDnf.checked = solve.dnf;
-            editPlusTwo.checked = solve.plusTwo;
-            editTime.value = "";
+            editTimeInput.initTime(solve);
             editModal.show();
         }
     }
@@ -757,35 +960,3 @@ resultsBody.addEventListener('click', event => {
         }
     }
 });
-
-// URL parameters and initialisation
-//--------------------------------------------------------
-
-function clearUrlParams() {
-    var params = new URLSearchParams(window.location.search);
-    params.delete('room');
-    console.log(params.toString());
-    window.history.replaceState({}, "", `?${params.toString()}`)
-    //window.location.search = params.toString();
-}
-
-function syncUrlAndPageState() {
-    var params = new URLSearchParams(window.location.search);
-    var roomNameParam = params.get('room');
-
-    if(roomNameParam != roomName.value && !isEmptyOrSpaces(roomName.value) && roomNameParam == null) { // If text box has value and url null, set url
-        params.set('room', roomName.value.toString());
-        console.log(params.toString());
-        window.history.replaceState({}, "", `?${params.toString()}`)
-        ///window.location.search = params.toString();
-    }
-    else { // Treat url as source of truth
-        roomNameInput.setValue(roomNameParam ?? "");
-    }
-}
-
-function tryAutoConnect() {
-    if(room == null && !isEmptyOrSpaces(roomName.value) && !isEmptyOrSpaces(userName.value)) {
-        setupRoom();
-    }
-}

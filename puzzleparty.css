@@ -108,3 +108,73 @@
 #drawScramble {
     max-height: 30rem;
 }
+
+/*Timer component stuff:*/
+
+.timeEntryContainer {
+    position: relative;
+}
+
+/*Hide these by default*/
+.timeEntryContainer .manualEntry,
+.timeEntryContainer .inspectionOverlay,
+.timeEntryContainer .timerEntry {
+    display: none;
+}
+
+.timeEntryContainer .inspectionOverlay {
+    opacity: 0;
+    transition: opacity .1s ease;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+}
+.timeEntryContainer[data-state="inspecting"] .inspectionOverlay,
+.timeEntryContainer[data-state="handsDown"] .inspectionOverlay,
+.timeEntryContainer[data-state="readyToStart"] .inspectionOverlay,
+.timeEntryContainer[data-state="timing"] .inspectionOverlay {
+    opacity: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bs-body-bg);
+}
+
+.timeEntryContainer[data-state="handsDown"] .inspectionOverlay {
+    color: var(--bs-warning);
+}
+
+.timeEntryContainer[data-state="readyToStart"] .inspectionOverlay {
+    color: var(--bs-success);
+}
+
+.inspectionOverlay::after {
+    content: attr(data-seconds);
+}
+
+[data-inspection-enabled="false"] .inspectionOverlay::after {
+    content: "0.00";
+}
+
+.timeEntryContainer[data-state="timing"] .inspectionOverlay::after {
+    content: "Timing...";
+}
+
+.timeEntryContainer[data-state="initialised"] .timerEntry::after {
+    content: "(Press space to start)";
+    font-size: small;
+    font-weight: lighter;
+}
+
+.timeEntryContainer[data-manual-entry="true"] .manualEntry {
+    display: block;
+}
+
+.timeEntryContainer[data-manual-entry="false"] .timerEntry {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
