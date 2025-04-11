@@ -1,4 +1,4 @@
-import {joinRoom} from './trystero-nostr.min.js'
+import {joinRoom} from './trystero-ipfs.min.js'
 // https://github.com/nomeata/sumserum/blob/master/sumserum.js
 // https://github.com/cs0x7f/cstimer/blob/master/UsingAsWorkerDemo.md - broken
 // https://github.com/cs0x7f/cstimer/blob/released/UsingAsWorkerDemo.md
