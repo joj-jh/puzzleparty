@@ -346,10 +346,11 @@ function setupRoom() {
     });
 
     room.onPeerJoin(peerId => { 
-        updateMembers();
         if(isHost) {
             shareMessageHistory(messages, peerId);
         }
+        updateMembers();
+        renderResults();
     });
     
     room.onPeerLeave(peerId => { 
@@ -387,6 +388,7 @@ function makeAction({
     
     const [send, onGet] = room.makeAction(actionName);
     onGet((data, peerId) => {
+        console.log(actionName, ' - received');
         if(data.date < Date.now() + 100) { // Don't accept messages from time travellers
             messages.get(actionName).push(data);
             messages.get(actionName).sort((a, b) => b.date - a.date);
@@ -395,6 +397,7 @@ function makeAction({
     });
 
     const customSend =  (data, peerId='') => {
+        console.log(actionName, ' - sending');
         messages.get(actionName).push(data);
         messages.get(actionName).sort((a, b) => b.date - a.date);
         if(peerId == '') {
