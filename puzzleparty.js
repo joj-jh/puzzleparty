@@ -137,7 +137,7 @@ function delay(time) {
 }
 
 var room;
-const config = {appId: 'puzzle_party_cube_race_server_nulgaria'};
+const config = {appId: 'https://vsevhopsvzsaktujxryv.supabase.co', supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzZXZob3BzdnpzYWt0dWp4cnl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzNjYyMTcsImV4cCI6MjA1OTk0MjIxN30.DBt1Ab5RMj7zvX_XCsIZqMDmoYKDqFLS3w8f7EEXH1U'};
 var messages = new Map();
 
 var setEvent;
