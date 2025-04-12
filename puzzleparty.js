@@ -15,6 +15,7 @@ const resultsHead = document.getElementById('resultsHead');
 const resultsBody= document.getElementById('resultsBody');
 const wins = document.getElementById('wins');
 const single = document.getElementById('single');
+const mo3 = document.getElementById('mo3');
 const ao5 = document.getElementById('ao5');
 const ao12 = document.getElementById('ao12');
 const manualEntry = document.getElementById('manualEntry');
@@ -163,7 +164,7 @@ class Time {
     }
 
     valueOf() {
-        return this.millis;
+        return this.millis ?? Number.MAX_SAFE_INTEGER;
     }
 
     format(nullFormat = '-') {
@@ -186,10 +187,6 @@ class Time {
     }
 }
 
-Time.prototype.valueOf = function() {
-    return this.time ?? Number.MAX_SAFE_INTEGER;
-}
-
 class Solve {
     constructor(solverId, scrambleIndex, millis, plusTwo = false, dnf = false) {
         this.solverId = solverId; 
@@ -207,6 +204,63 @@ class Solve {
         }
         else {
             return out;
+        }
+    }
+
+    valueOf() {
+        return this.dnf ? Number.MAX_SAFE_INTEGER : this.time.valueOf();
+    }
+}
+
+class Mean {
+    constructor(solves, numSolves, truncated = false) {
+        this.dnf = false;
+        this.undefined = true;
+        this.time = Time.Null();
+        
+        if(solves.length >= numSolves) {
+            this.undefined = false;
+            var dnfs = 0;
+            var sum = 0;
+            var min = Number.MAX_SAFE_INTEGER;
+            var max = 0;
+            for(var j = 0; j < numSolves; j++) {
+                sum += solves[j].time.millis;
+                dnfs += solves[j].dnf ? 1:0;
+                min = solves[j].time.millis < min && !solves[j].dnf ? solves[j].time.millis : min;
+        
+                if(solves[j].dnf || (dnfs == 0 && solves[j].time.millis > max)) {
+                    max = solves[j].time.millis;
+                }
+            }
+
+            if(truncated) {
+                console.log(min, max);
+                this.time = new Time((sum-min-max)/(numSolves-2));
+            }
+            else {
+                this.time = new Time(sum/numSolves);
+            }
+
+            if((truncated && dnfs > 1 ) || !truncated && dnfs > 0) {
+                this.dnf = true;
+            }
+        }
+    }
+
+    valueOf() {
+        return this.dnf || this.undefined ? Number.MAX_SAFE_INTEGER : this.time.valueOf();
+    }
+
+    format() {
+        if(this.undefined) {
+            return '-';
+        }
+        else if(this.dnf) {
+            return 'DNF';
+        }
+        else {
+            return this.time.format('-');
         }
     }
 }
@@ -284,7 +338,7 @@ function setupRoom() {
     localStorage.setItem("user_id", user_id);
 
     // Check if hosted on github pages or just locally for tests
-    if(/*window.location.toString().includes("github")*/ true) {
+    if(window.location.toString().includes("github")) {
         room = joinRoom(config, room_id);
     }
     else {
@@ -567,6 +621,7 @@ function renderResults() {
     });
 
     single.innerHTML = '<th scope="col">single</th>';
+    mo3.innerHTML = '<th scope="col">mo3</th>';
     ao5.innerHTML = '<th scope="col">ao5</th>';
     ao12.innerHTML = '<th scope="col">ao12</th>';
     members.forEach(m =>  {
@@ -582,48 +637,34 @@ function renderResults() {
             )
         );
 
-        var ao5s = getTruncatedMeans(s, 5);
-        ao5.appendChild(
-            makeTh(`${ao5s.last.format('DNF')} | ${ao5s.best.format('DNF')}`)
+        var mo3s = getMeans(s, 3, false);
+        mo3.appendChild(
+            makeTh(`${mo3s.last.format()} | ${mo3s.best.format()}`)
         );
 
-        var ao12s = getTruncatedMeans(s, 12);
+        var ao5s = getMeans(s, 5, true);
+        ao5.appendChild(
+            makeTh(`${ao5s.last.format()} | ${ao5s.best.format()}`)
+        );
+
+        var ao12s = getMeans(s, 12, true);
         ao12.appendChild(
-            makeTh(`${ao12s.last.format('DNF')} | ${ao12s.best.format('DNF')}`)
+            makeTh(`${ao12s.last.format()} | ${ao12s.best.format()}`)
         );
     });
     single.appendChild(document.createElement('th'));
+    mo3.appendChild(document.createElement('th'));
     ao5.appendChild(document.createElement('th'));
     ao12.appendChild(document.createElement('th'));
 }
 
 // This is the bad O(n*m) way and it makes my teeth hurt (write now, optimise later if needed)
-function getTruncatedMeans(solves, meanSize) {
-    var means = {best: Time.Null(), last: Time.Null()};
+function getMeans(solves, meanSize, truncated) {
+    var means = {best: new Mean([], meanSize, truncated), last: new Mean([], meanSize, truncated)};
 
     for(var i = 0; i < solves.length-meanSize; i++) {
-        var dnfs = 0;
-        var sum = 0;
-        var min = Number.MAX_SAFE_INTEGER;
-        var max = 0;
-        for(var j = i; j < i+meanSize; j++) {
-            sum += solves[j].time.millis;
-            dnfs += solves[j].dnf ? 1:0;
-            min = solves[j].time.millis < min && !solves[j].dnf ? solves[j].time.millis : min;
-
-            if(solves[j].dnf || (dnfs == 0 && solves[j].time.millis > max)) {
-                max = solves[j].time.millis;
-            }
-        }
-        console.log(min, max);
-        if(dnfs > 1) {
-            means.last = Time.Null();
-        }
-        else {
-            means.last = new Time((sum - min - max)/(meanSize-2));
-        }
-
-        if(means.last < means.best || means.best.millis == null) {
+        means.last = new Mean(solves.slice(i, i+meanSize), meanSize, truncated);
+        if(means.last < means.best || means.best.undefined || means.best.dnf) {
             means.best = means.last;
         }
     }

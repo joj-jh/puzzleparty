@@ -42,3 +42,5 @@ Todo:
 - ~~Prevent entry/timing after solve already entered (in main timer)~~
 - ~~Single not updating correctly~~
 - Best ao5/12 summaries on click
+- ~~More stats (mo3)~~
+  - Wins
