@@ -594,7 +594,7 @@ function renderResults() {
             messages?.name?.findLast(n => n.id == m)?.name
         );
         if(m == selfId) {
-            headerItem.classList.add('text-primary');
+            headerItem.classList.add('myName');
         }
         resultsHead.appendChild(
             headerItem
@@ -879,6 +879,9 @@ class TimeEntry {
         if(this.state == teState.Inspecting) {
             this.#setState(teState.Initialised);
             this.#stopInspection();
+            if(this.manualEntry) {
+                this.nodeManualEntry.input.focus();
+            }
         }
     }
 
