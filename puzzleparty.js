@@ -225,17 +225,16 @@ class Mean {
             var min = Number.MAX_SAFE_INTEGER;
             var max = 0;
             for(var j = 0; j < numSolves; j++) {
-                sum += solves[j].time.millis;
-                dnfs += solves[j].dnf ? 1:0;
-                min = solves[j].time.millis < min && !solves[j].dnf ? solves[j].time.millis : min;
+                sum += solves[j]?.time?.millis ?? 0;
+                dnfs += solves[j] == null || solves[j].dnf ? 1:0;
+                min = solves[j] != null && solves[j].time.millis < min && !solves[j].dnf ? solves[j].time.millis : min;
         
-                if(solves[j].dnf || (dnfs == 0 && solves[j].time.millis > max)) {
-                    max = solves[j].time.millis;
+                if(solves[j] == null || solves[j].dnf || (dnfs == 0 && solves[j].time.millis > max) ) {
+                    max = solves[j]?.time?.millis ?? 0;
                 }
             }
 
             if(truncated) {
-                console.log(min, max);
                 this.time = new Time((sum-min-max)/(numSolves-2));
             }
             else {
@@ -338,7 +337,7 @@ function setupRoom() {
     localStorage.setItem("user_id", user_id);
 
     // Check if hosted on github pages or just locally for tests
-    if(window.location.toString().includes("github")) {
+    if(/*window.location.toString().includes("github")*/true) {
         room = joinRoom(config, room_id);
     }
     else {
@@ -359,6 +358,9 @@ function setupRoom() {
     setName = makeAction({
         room: room,
         actionName: 'name',
+        onAfterReceivedHandler: (data, peerId) => {
+            renderResults();
+        }
     })
     setName({date: Date.now(), name: user_id, id: selfId});
 
@@ -412,10 +414,23 @@ function setupRoom() {
         }
     });
 
+    var [requestSkip, onSkipReceived] = room.makeAction('skip');
+    document.getElementById('skip').addEventListener('click', () => {
+        if(isHost) {
+            genScramble();
+        }
+        requestSkip({}, hostId);
+    });
+    onSkipReceived((data, peerId) => {
+        if(isHost) {
+            genScramble();
+        }
+    })
+
+
     room.onPeerJoin(peerId => { 
         updateMembers();
         if(isHost) {
-            console.log(messages);
             shareMessageHistory(messages, peerId);
         }
         
@@ -563,7 +578,6 @@ function updateMembers() {
 //--------------------------------------------------------
 // This is super inefficient, but should still work:
 function renderResults() {
-    console.log('render results');
     function makeTh(textContent) {
         var header = document.createElement('th', {scope: "col"});
         header.textContent = textContent;
@@ -662,7 +676,8 @@ function renderResults() {
 function getMeans(solves, meanSize, truncated) {
     var means = {best: new Mean([], meanSize, truncated), last: new Mean([], meanSize, truncated)};
 
-    for(var i = 0; i < solves.length-meanSize; i++) {
+    const maxIndex = solves.last() == null ? solves.length-meanSize : solves.length-meanSize + 1;
+    for(var i = 0; i < maxIndex; i++) {
         means.last = new Mean(solves.slice(i, i+meanSize), meanSize, truncated);
         if(means.last < means.best || means.best.undefined || means.best.dnf) {
             means.best = means.last;
@@ -816,7 +831,7 @@ class TimeEntry {
         else if(this.state == teState.AwaitingEntry) {
             const tmpTimeString = new Time(this.stopTimer - this.startTimer).format();
             this.nodeManualEntry.setValue(tmpTimeString.replace(/\D/g, ""));
-            this.nodeTimerEntry.stringValue = tmpTimeString;
+            this.nodeTimerEntry.textContent = tmpTimeString;
             this.manualEntry = manual;
             this.container.setAttribute('data-manual-entry', manual.toString())
         }

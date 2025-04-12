@@ -100,13 +100,23 @@
     cursor: pointer;
 }
 
+.scrambleArea {
+    min-height: 10rem;
+    max-height: 10rem;
+    overflow-y: auto;
+}
+
 #viewScrambleImage {
     width: 20rem;
     height: 20rem;
 }
 
 #drawScramble {
-    max-height: 30rem;
+    max-height: 20rem;
+}
+
+#mainTimerContainer {
+    height: 6rem;
 }
 
 /*Timer component stuff:*/

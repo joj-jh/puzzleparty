@@ -6,7 +6,6 @@ Todo:
   - ~~Only show when valid inputs~~
   - ~~Validation highlighting (ensuring username is not blank)~~
   - ~~Store username from previous sessions~~
-- Switch out to nostr version of trystero (torrent version is failing for me)
 - ~~Hide stuff until connection is made (looks bad)~~
 - Make sure current system initiates syncing of messages properly
 - Is global messaging method okay? Or should a designated host act as single source of truth?
@@ -44,3 +43,4 @@ Todo:
 - Best ao5/12 summaries on click
 - ~~More stats (mo3)~~
   - Wins
+- ~~Skip button~~
