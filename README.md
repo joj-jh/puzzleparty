@@ -44,4 +44,4 @@ Todo:
 - ~~More stats (mo3)~~
   - Wins
 - ~~Skip button~~
-- Enable editing of skipped times
+- ~~Enable editing of skipped times~~

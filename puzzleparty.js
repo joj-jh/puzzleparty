@@ -610,8 +610,13 @@ function renderResults() {
         var rowNumber = document.createElement('th');
         rowNumber.textContent = index+1;
         row.appendChild(rowNumber);
-        members.forEach(() => {
-            row.appendChild(document.createElement('td'));
+        members.forEach((m) => {
+            const el = document.createElement('td');
+            el.setAttribute('data-solve-index', index.toString());
+            if(m == selfId) {
+                el.classList.add('mySolve')
+            }
+            row.appendChild(el);
         });
         row.appendChild(document.createElement('td'));
         resultsBody.prepend(row);
@@ -776,7 +781,7 @@ class TimeEntry {
             if(event.key == "Enter") {
                 this.#submit();
             }
-            else if(!"123456890".includes(event.key) && ["Escape", "ArrowLeft", "ArrowRight", "Backspace", "Clear", "Delete"].indexOf(event.key) == -1) {
+            else if(!"1234567890".includes(event.key) && ["Escape", "ArrowLeft", "ArrowRight", "Backspace", "Clear", "Delete"].indexOf(event.key) == -1) {
                 event.preventDefault();
             }
         });
@@ -1036,8 +1041,12 @@ resultsBody.addEventListener('click', event => {
     var cell = event.target.closest('td');
     if(cell) {
         selectedScrambleIndex = parseInt(cell.getAttribute('data-solve-index'));
-        if(selectedScrambleIndex != null && !isNaN(selectedScrambleIndex)) {
-            const solve = messages.solve.findLast(s => s.solverId == selfId && s.scrambleIndex == selectedScrambleIndex); // most recent of my solves with given scramble index
+
+        if(selectedScrambleIndex != null 
+            && !isNaN(selectedScrambleIndex) 
+            && cell.classList.contains('mySolve') 
+            && selectedScrambleIndex < (messages.scramble.length-1)) {
+            const solve = messages.solve.findLast(s => s.solverId == selfId && s.scrambleIndex == selectedScrambleIndex) ?? new Solve(selfId, selectedScrambleIndex, 1, false, false); // most recent of my solves with given scramble index or new if null
             editTimeInput.initTime(solve);
             editModal.show();
         }
