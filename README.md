@@ -39,5 +39,6 @@ Todo:
 - User status announcements
   - Spectate
 - Username updates
-- Prevent entry/timing after solve already entered (in main timer)
-- Single not updating correctly
+- ~~Prevent entry/timing after solve already entered (in main timer)~~
+- ~~Single not updating correctly~~
+- Best ao5/12 summaries on click

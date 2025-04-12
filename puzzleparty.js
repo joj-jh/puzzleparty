@@ -438,6 +438,7 @@ function updateScramble() {
             scramble.classList.replace('fs-3','fs-1');
 
         }
+        newScramble(); // Update time input to accept new values
         pageContainer.setAttribute("data-has-scramble", "");
         createScrambleImage(scram, eventType).then(h => document.getElementById('drawScramble').innerHTML = h);
         renderResults();
@@ -487,10 +488,8 @@ function eventHasChanged() {
 }
 
 function allMembersReady() {
-    var solvesRev = messages.solve.reverse();
-
     return members.every(m => 
-        solvesRev.findIndex(s => 
+        messages.solve.findLastIndex(s => 
             s.solverId == m && 
             s.scrambleIndex == messages.scramble.length-1) != -1
     );
@@ -524,7 +523,7 @@ function renderResults() {
         columnIndex.set(m, i);
         solvesByMember.set(m, messages.scramble.map(_ => null));
         var headerItem = makeTh(
-            messages?.name?.toReversed()?.find(n => n.id == m)?.name
+            messages?.name?.findLast(n => n.id == m)?.name
         );
         if(m == selfId) {
             headerItem.classList.add('text-primary');
@@ -564,7 +563,6 @@ function renderResults() {
             if(solve.solverId == selfId) {
                 tableEntry.classList.add('mySolve');
             }
-            console.log(s.time, s.date);
         }
     });
 
@@ -578,7 +576,7 @@ function renderResults() {
         single.appendChild( 
             makeTh(
                 validSolves.length > 0 ? 
-                    validSolves.reduce((min, cur) => cur.millis < min.millis ? cur : min)
+                    validSolves.reduce((min, cur) => cur.time.millis < min.time.millis ? cur : min)
                     .format() : 
                     "-"
             )
@@ -599,7 +597,7 @@ function renderResults() {
     ao12.appendChild(document.createElement('th'));
 }
 
-// This is the bad O(n^2) way and it makes my teeth hurt (write now, optimise later if needed)
+// This is the bad O(n*m) way and it makes my teeth hurt (write now, optimise later if needed)
 function getTruncatedMeans(solves, meanSize) {
     var means = {best: Time.Null(), last: Time.Null()};
 
@@ -611,10 +609,13 @@ function getTruncatedMeans(solves, meanSize) {
         for(var j = i; j < i+meanSize; j++) {
             sum += solves[j].time.millis;
             dnfs += solves[j].dnf ? 1:0;
-            min = solves[j].time.millis < min ? solves[j].time.millis : min;
-            max = solves[j].time.millis > max ? solves[j].time.millis : max;
-        }
+            min = solves[j].time.millis < min && !solves[j].dnf ? solves[j].time.millis : min;
 
+            if(solves[j].dnf || (dnfs == 0 && solves[j].time.millis > max)) {
+                max = solves[j].time.millis;
+            }
+        }
+        console.log(min, max);
         if(dnfs > 1) {
             means.last = Time.Null();
         }
@@ -669,6 +670,7 @@ const teState = {
     ReadyToStart: 'readyToStart',
     Timing: 'timing',
     AwaitingEntry: 'awaitingEntry',
+    AwaitingScramble: 'awaitingScramble'
 }
 // Dogshit spaghetti - this could be like 50 lines of async-await, what was I doing!?
 class TimeEntry {
@@ -742,27 +744,31 @@ class TimeEntry {
         this.setManualEntry(true);
         this.enableInspection(false);
         this.nodeManualEntry.setValue(solve.time.format().replace(/\D/g, ""));
+        this.nodeDnfCheck.checked = solve.dnf;
+        this.nodePlusTwoCheck.checked = solve.plusTwo;
+        this.#setState(teState.AwaitingEntry);
+        this.nodeManualEntry.input.focus();
+    }
+
+    newScramble() {
+        if(this.state == teState.AwaitingScramble) {
+            this.#setState(teState.Initialised);
+            if(this.manualEntry) {
+                this.nodeManualEntry.input.focus();
+            }
+        }
     }
 
     enableInspection(enabled) {
-        if([teState.Initialised, teState.AwaitingEntry].indexOf(this.state) != -1) {
+        if([teState.Initialised, teState.AwaitingEntry, teState.AwaitingScramble].indexOf(this.state) != -1) {
             this.inspectionEnabled = enabled;
             this.container.setAttribute('data-inspection-enabled', enabled.toString());
         }
         return this.inspectionEnabled;
     }
 
-    setDisabled(disabled) {
-        if(disabled) {
-            this.container.setAttribute('disabled', '');
-        }
-        else {
-            this.container.removeAttribute('disabled');
-        }
-    }
-
     setManualEntry(manual) {
-        if(this.state == teState.Initialised) { // allow only when there's no data
+        if(this.state == teState.Initialised || this.state == teState.AwaitingScramble) { // allow only when there's no data
             this.manualEntry = manual;
             this.container.setAttribute('data-manual-entry', manual.toString())
         }
@@ -836,7 +842,7 @@ class TimeEntry {
             this.nodeTimerEntry.textContent = "";
             this.nodeDnfCheck.checked = false;
             this.nodePlusTwoCheck.checked = false;
-            this.#setState(teState.Initialised);
+            this.#setState(teState.AwaitingScramble);
             this.nodeSubmitButton.blur();
             this.container.focus(); // pull focus away from button to avoid auto-submission
         }
@@ -881,6 +887,14 @@ class TimeEntry {
     }
 
     #setState(newState) {
+        if(this.state == teState.AwaitingScramble) {
+            this.nodeManualEntry.input.removeAttribute('disabled');
+        }
+
+        if(newState == teState.AwaitingScramble) {
+            this.nodeManualEntry.input.setAttribute('disabled', '');
+        }
+
         this.state = newState;  
         this.container.setAttribute('data-state', this.state);
     }
@@ -900,6 +914,10 @@ const mainTimeInput = new TimeEntry(
         );
     }
 );
+
+function newScramble() {
+    mainTimeInput.newScramble();
+}
 
 mainTimeInput.setManualEntry(manualEntry.checked);
 mainTimeInput.enableInspection(inspection.checked);
@@ -960,7 +978,7 @@ resultsBody.addEventListener('click', event => {
     if(cell) {
         selectedScrambleIndex = parseInt(cell.getAttribute('data-solve-index'));
         if(selectedScrambleIndex != null && !isNaN(selectedScrambleIndex)) {
-            const solve = messages.solve.toReversed().find(s => s.solverId == selfId && s.scrambleIndex == selectedScrambleIndex); // most recent of my solves with given scramble index
+            const solve = messages.solve.findLast(s => s.solverId == selfId && s.scrambleIndex == selectedScrambleIndex); // most recent of my solves with given scramble index
             editTimeInput.initTime(solve);
             editModal.show();
         }
