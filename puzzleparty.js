@@ -1,4 +1,4 @@
-import {joinRoom} from './trystero-torrent.min.js'
+import {joinRoom, selfId} from './trystero-torrent.min.js'
 // https://github.com/nomeata/sumserum/blob/master/sumserum.js
 // https://github.com/cs0x7f/cstimer/blob/master/UsingAsWorkerDemo.md - broken
 // https://github.com/cs0x7f/cstimer/blob/released/UsingAsWorkerDemo.md
@@ -96,7 +96,7 @@ window.onload = function() {
         li.innerHTML = e[0];
         li.setAttribute('data-value', e[1]);
         li.addEventListener('click', () => {
-            if(messages.get('event') != e[1]) {
+            if(messages.event != e[1]) {
                 setEvent({date: Date.now(), eventId: e[1], eventName: e[0], scrambleLength: e[2]});
             }
         });
@@ -138,7 +138,14 @@ function delay(time) {
 
 var room;
 const config = {appId: 'puzzle_party_no_server_needed_wahooo'};
-var messages = new Map();
+var messages = { 
+    date: Date.now() ,
+    solve: [],
+    name: [],
+    scramble: [],
+    event: [],
+    history: []
+};
 
 var setEvent;
 var setScramble;
@@ -270,14 +277,14 @@ const roomNameInput = new ValidatedTextbox(
 
 function setupRoom() {
     console.log("making room");
-
+    console.log("selfid: ", selfId);
     const room_id = roomName.value;
     const user_id = userName.value;
 
     localStorage.setItem("user_id", user_id);
 
     // Check if hosted on github pages or just locally for tests
-    if(window.location.toString().includes("github")) {
+    if(/*window.location.toString().includes("github")*/ true) {
         room = joinRoom(config, room_id);
     }
     else {
@@ -299,7 +306,7 @@ function setupRoom() {
         room: room,
         actionName: 'name',
     })
-    setName({date: Date.now(), name: user_id, id: room.selfId});
+    setName({date: Date.now(), name: user_id, id: selfId});
 
     setScramble = makeAction({
         room: room, 
@@ -328,6 +335,9 @@ function setupRoom() {
         actionName: 'solve',
         onAfterReceivedHandler: (data, peerId) => {
             renderResults();
+            if(isHost && allMembersReady()) {
+                genScramble();
+            }
         },
         onAfterSendHandler: (data, peerId) => {
             renderResults();
@@ -342,14 +352,19 @@ function setupRoom() {
         actionName: 'history',
         onAfterReceivedHandler: (data, peerId) => {
             messages = data;
+            setName({date: Date.now(), name: user_id, id: selfId});
+            renderResults();
+            updateScramble();
         }
     });
 
     room.onPeerJoin(peerId => { 
+        updateMembers();
         if(isHost) {
+            console.log(messages);
             shareMessageHistory(messages, peerId);
         }
-        updateMembers();
+        
         renderResults();
     });
     
@@ -384,22 +399,22 @@ function makeAction({
     onAfterSendHandler: onAfterSendHandler = (data, peerId) => {}, 
     onAfterReceivedHandler: onAfterReceivedHandler = (data, peerId) => {} }
 ) {
-    messages.set(actionName, []);
-    
     const [send, onGet] = room.makeAction(actionName);
     onGet((data, peerId) => {
-        console.log(actionName, ' - received');
-        if(data.date < Date.now() + 100) { // Don't accept messages from time travellers
-            messages.get(actionName).push(data);
-            messages.get(actionName).sort((a, b) => b.date - a.date);
+        if(/*data.date < Date.now() + 100*/true) { // Don't accept messages from time travellers
+            if(actionName != 'history') {
+                messages[actionName].push(data);
+                messages[actionName].sort((a, b) => a.date - b.date);
+            }
             onAfterReceivedHandler(data, peerId);
         }
     });
 
     const customSend =  (data, peerId='') => {
-        console.log(actionName, ' - sending');
-        messages.get(actionName).push(data);
-        messages.get(actionName).sort((a, b) => b.date - a.date);
+        if(actionName != 'history') {
+            messages[actionName].push(data);
+            messages[actionName].sort((a, b) => a.date - b.date);
+        }
         if(peerId == '') {
             send(data);
         }
@@ -412,8 +427,8 @@ function makeAction({
 }
 
 function updateScramble() {
-    const scram = messages.get('scramble').last()?.scramble;
-    const eventType = messages.get('event').last()?.eventId;
+    const scram = messages.scramble.last()?.scramble;
+    const eventType = messages.event.last()?.eventId;
     if(scram != null && eventType != null) {
         scramble.textContent = scram;
         if(scram.length > 120) {
@@ -444,7 +459,7 @@ async function createScrambleImage(scramble, eventType) {
 }
 
 function genScramble() {
-    const lastEvent = messages.get('event').last();
+    const lastEvent = messages.event.last();
     cstimerWorker
         .getScramble(lastEvent.eventId, lastEvent.scrambleLength)
         .then(scram => {
@@ -453,11 +468,11 @@ function genScramble() {
 }
 
 function updateEvent() {
-    selectedEventButton.textContent = messages.get('event').last().eventName;
+    selectedEventButton.textContent = messages.event.last().eventName;
     if(eventHasChanged()) { // Just makin sure
         pageContainer.removeAttribute("data-has-scramble");
-        messages.get('solve').length = 0; // Clear all solves + scrambles if event changed
-        messages.get('scramble').length = 0; 
+        messages.solve.length = 0; // Clear all solves + scrambles if event changed
+        messages.scramble.length = 0; 
         if(isHost) {
             genScramble()
         }
@@ -465,38 +480,37 @@ function updateEvent() {
 }
 
 function eventHasChanged() {
-    var pastEvents = messages.get('event');
+    var pastEvents = messages.event;
     var len = pastEvents.length;
     // If the event is being set for the first time, or is different from the previous value, update stuff
     return (len == 1 || (len > 1 && pastEvents[len-1].eventId != pastEvents[len-2].eventId));
 }
 
 function allMembersReady() {
-    var solvesRev = messages.get('solve').reverse();
+    var solvesRev = messages.solve.reverse();
 
     return members.every(m => 
         solvesRev.findIndex(s => 
             s.solverId == m && 
-            s.scrambleIndex == messages.get('scramble').length-1) != -1
+            s.scrambleIndex == messages.scramble.length-1) != -1
     );
 }
 
 function updateMembers() {
-    members = Array.from(room
-    .getPeers())
-    .concat(room.selfId);
+    members = Object.keys(room.getPeers())
+    .concat(selfId);
 
     members.sort();
 
     hostId = members.reduce((min, peerId) => peerId < min ? peerId : min);
-    isHost = room.selfId == hostId;
+    isHost = selfId == hostId;
 }
 
 // Rendering stuff:
 //--------------------------------------------------------
 // This is super inefficient, but should still work:
 function renderResults() {
-
+    console.log('render results');
     function makeTh(textContent) {
         var header = document.createElement('th', {scope: "col"});
         header.textContent = textContent;
@@ -508,12 +522,15 @@ function renderResults() {
     resultsHead.innerHTML = '<th scope="col">#</th>';
     members.forEach((m, i) => {
         columnIndex.set(m, i);
-        solvesByMember.set(m, messages.get('scramble').map(_ => null));
-        var header = document.createElement('th', {scope: "col"});
+        solvesByMember.set(m, messages.scramble.map(_ => null));
+        var headerItem = makeTh(
+            messages?.name?.toReversed()?.find(n => n.id == m)?.name
+        );
+        if(m == selfId) {
+            headerItem.classList.add('text-primary');
+        }
         resultsHead.appendChild(
-            makeTh(
-                messages.get('name').reverse().find(n => n.id == m).name
-            )
+            headerItem
         );
     });
 
@@ -521,7 +538,7 @@ function renderResults() {
 
     resultsBody.innerHTML = "";
     var rowCount = 0;
-    messages.get('scramble').forEach((scramble, index) => {
+    messages.scramble.forEach((scramble, index) => {
         var row = document.createElement('tr');
         var rowNumber = document.createElement('th');
         rowNumber.textContent = index+1;
@@ -534,14 +551,20 @@ function renderResults() {
         rowCount++;
     });
 
-    messages.get('solve').forEach((solve) => {
+    messages.solve.forEach((solve) => {
         if(columnIndex.has(solve.solverId)){
             var tableEntry = resultsBody.children[rowCount - 1 - solve.scrambleIndex].children[columnIndex.get(solve.solverId)+1];
-            solvesByMember.get(solve.solverId)[solve.scrambleIndex] = solve;
-            tableEntry.textContent = solve.format();
+            solve.time = Object.assign(new Time(), solve.time);
+            const s = Object.assign(new Solve(), solve);
+            solvesByMember.get(solve.solverId)[solve.scrambleIndex] = s
+            tableEntry.textContent = s.format();
             tableEntry.setAttribute('data-plustwo', solve.plusTwo.toString());
             tableEntry.setAttribute('data-dnf', solve.dnf.toString());
             tableEntry.setAttribute('data-solve-index', solve.scrambleIndex);
+            if(solve.solverId == selfId) {
+                tableEntry.classList.add('mySolve');
+            }
+            console.log(s.time, s.date);
         }
     });
 
@@ -550,13 +573,14 @@ function renderResults() {
     ao12.innerHTML = '<th scope="col">ao12</th>';
     members.forEach(m =>  {
         const s = solvesByMember.get(m);
-        
+
+        const validSolves = s.filter(solve => solve!= null && !(solve.dnf));
         single.appendChild( 
             makeTh(
-                s.filter(solve => solve!= null && !(solve.dnf))
-                .concat(Time.Null())
-                .reduce((min, cur) => cur < min ? cur : min)
-                .format()
+                validSolves.length > 0 ? 
+                    validSolves.reduce((min, cur) => cur.millis < min.millis ? cur : min)
+                    .format() : 
+                    "-"
             )
         );
 
@@ -575,7 +599,7 @@ function renderResults() {
     ao12.appendChild(document.createElement('th'));
 }
 
-// This is the bad O(n^2) way and it makes my teeth hurt
+// This is the bad O(n^2) way and it makes my teeth hurt (write now, optimise later if needed)
 function getTruncatedMeans(solves, meanSize) {
     var means = {best: Time.Null(), last: Time.Null()};
 
@@ -646,6 +670,7 @@ const teState = {
     Timing: 'timing',
     AwaitingEntry: 'awaitingEntry',
 }
+// Dogshit spaghetti - this could be like 50 lines of async-await, what was I doing!?
 class TimeEntry {
     constructor(container, onSubmit) {
         // Component configuration
@@ -725,6 +750,15 @@ class TimeEntry {
             this.container.setAttribute('data-inspection-enabled', enabled.toString());
         }
         return this.inspectionEnabled;
+    }
+
+    setDisabled(disabled) {
+        if(disabled) {
+            this.container.setAttribute('disabled', '');
+        }
+        else {
+            this.container.removeAttribute('disabled');
+        }
     }
 
     setManualEntry(manual) {
@@ -857,8 +891,8 @@ const mainTimeInput = new TimeEntry(
     (ms, p2, dnf) => {
         postSolve(
             new Solve(
-                room.selfId, 
-                messages.get('scramble').length-1, 
+                selfId, 
+                messages.scramble.length-1, 
                 ms, 
                 p2, 
                 dnf
@@ -902,26 +936,14 @@ document.body.addEventListener('keyup', (event) => {
 // Solve selection and editing:
 //--------------------------------------------------------
 
-// setupTimeInput(editTime, ms => {
-//     postSolve(
-//         new Solve(
-//             room.selfId, 
-//             selectedSolveIndex, 
-//             ms, 
-//             editPlusTwo.checked, 
-//             editDnf.checked
-//         )
-//     );
-//     editModal.hide();
-// });
 
 const editTimeInput = new TimeEntry(
     document.querySelector('#editModal .modal-body'),
     (ms, p2, dnf) => {
         postSolve(
             new Solve(
-                room.selfId, 
-                selectedSolveIndex, 
+                selfId, 
+                selectedScrambleIndex, 
                 ms, 
                 p2, 
                 dnf
@@ -931,14 +953,14 @@ const editTimeInput = new TimeEntry(
     }
 )
 
-var selectedSolveIndex = null;
+var selectedScrambleIndex = null;
 resultsBody.addEventListener('click', event => {
     // Handle clicking and showing editor modal
     var cell = event.target.closest('td');
     if(cell) {
-        selectedSolveIndex = parseInt(cell.getAttribute('data-solve-index'));
-        if(selectedSolveIndex != null) {
-            const solve = messages.get('solve')[selectedSolveIndex];
+        selectedScrambleIndex = parseInt(cell.getAttribute('data-solve-index'));
+        if(selectedScrambleIndex != null && !isNaN(selectedScrambleIndex)) {
+            const solve = messages.solve.toReversed().find(s => s.solverId == selfId && s.scrambleIndex == selectedScrambleIndex); // most recent of my solves with given scramble index
             editTimeInput.initTime(solve);
             editModal.show();
         }
@@ -950,8 +972,8 @@ resultsBody.addEventListener('click', event => {
         var scrambleIndex = parseInt(cell.textContent);
         if(scrambleIndex != null) {
             scrambleIndex -= 1; // Convert for use with 0-indexed arrays
-            const scram = messages.get('scramble')[scrambleIndex];
-            const eventType = messages.get('event').last().eventId;
+            const scram = messages.scramble[scrambleIndex];
+            const eventType = messages.event.last().eventId;
             if(scram && eventType) {
                 viewScramble.textContent = scram.scramble;
                 createScrambleImage(scram.scramble, eventType)

@@ -39,3 +39,5 @@ Todo:
 - User status announcements
   - Spectate
 - Username updates
+- Prevent entry/timing after solve already entered (in main timer)
+- Single not updating correctly

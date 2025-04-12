@@ -96,7 +96,7 @@
     content: "Join";
 }
 
-#resultsBody td[data-solve-index]:hover, #resultsBody th:hover {
+#resultsBody td[data-solve-index].mySolve:hover, #resultsBody th:hover {
     cursor: pointer;
 }
 
