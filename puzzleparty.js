@@ -137,22 +137,28 @@ function delay(time) {
     })
 }
 
+function resetMessages() {
+    messages = { 
+        date: Date.now(),
+        solve: [],
+        name: [],
+        scramble: [],
+        event: [],
+        history: []
+    };
+}
+
 var room;
 const config = {appId: 'puzzle_party_no_server_needed_wahooo'};
-var messages = { 
-    date: Date.now() ,
-    solve: [],
-    name: [],
-    scramble: [],
-    event: [],
-    history: []
-};
+var messages;
 
 var setEvent;
 var setScramble;
 var setName;
 var shareMessageHistory;
 var postSolve;
+
+resetMessages();
 
 class Time {
     constructor(millis) {
@@ -453,9 +459,8 @@ function setupRoom() {
 function leaveRoom() {
     room.leave();
     room = null;
-    messages = new Map();
+    resetMessages();
     pageContainer.removeAttribute("data-connected");
-    selectedEventButton.setAttribute("disabled", "");
     roomNameInput.setValue("");
     clearUrlParams();
 }
